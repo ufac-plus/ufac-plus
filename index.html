@@ -2,75 +2,563 @@
 <html lang="pt-BR">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>UFAC+</title>
-<meta name="description" content="Portal do Aluno e RU da Ufac num app só, para Android e iPhone. App independente, não oficial.">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>UFAC+ · Portal do Aluno e RU num app só</title>
+<meta name="description" content="Horários, notas, relatórios, saldo do RU, cardápio e QR de entrada da Ufac num app só, para Android e iPhone. App independente, feito por alunos, não oficial.">
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#F3F5F9" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0A0F1A" media="(prefers-color-scheme: dark)">
+<meta property="og:title" content="UFAC+ · Portal do Aluno e RU num app só">
+<meta property="og:description" content="Horários, notas, relatórios, saldo do RU e QR de entrada, para Android e iPhone. App independente, não oficial.">
+<meta property="og:image" content="https://ufac-plus.github.io/ufac-plus/assets/icone-512.png">
+<meta property="og:locale" content="pt_BR">
+<link rel="icon" href="assets/icone-192.png">
+<link rel="apple-touch-icon" href="assets/icone-180.png">
+<link rel="preload" href="assets/fonts/PlusJakartaSans-Variable.ttf" as="font" type="font/ttf" crossorigin>
+<script>document.documentElement.classList.add('js')</script>
 <style>
-:root{--fundo:#F3F5F9;--cartao:#FFFFFF;--texto:#0E1726;--sec:#536074;--borda:#E3E8F0;--prim:#0B4FA8;--acento:#F2A516;--sobreAcento:#1A1300}
-@media (prefers-color-scheme:dark){:root{--fundo:#0A0F1A;--cartao:#141B2A;--texto:#E9EEF6;--sec:#9AA6BA;--borda:#232D40;--prim:#16438C;--acento:#F5B23A}}
+/* Fonte do próprio app, servida daqui (sem Google Fonts: o site não chama terceiros). */
+@font-face{font-family:"Plus Jakarta Sans";src:url(assets/fonts/PlusJakartaSans-Variable.ttf) format("truetype");font-weight:200 800;font-display:swap}
+
+/* Tokens do app (CLAUDE.md, seção 6). O site segue o tema do sistema, como o app. */
+:root{
+  --fundo:#F3F5F9;--cartao:#FFFFFF;--texto:#0E1726;--sec:#536074;--borda:#E3E8F0;--cromo:#E6EBF2;
+  --prim:#0B4FA8;--sobrePrimSec:#D3E1F7;--acento:#F2A516;--sobreAcento:#1A1300;
+  --chipFundo:#FFF1D6;--chipTexto:#7A4A00;--navAtiva:#0B4FA8;--navAtivaFundo:#E2ECFB;
+  --verde:#1F7A44;--verdeFundo:#E1F4E8;
+  --vidro:rgba(243,245,249,.78);--sombra:rgba(11,79,168,.16);--moldura:#0E1726;--moldura2:#2A3550;
+  --brilho:radial-gradient(60% 50% at 75% 20%,rgba(11,79,168,.10),transparent 70%);
+  --telaFundo:#F3F5F9;--telaTexto:#0E1726;
+}
+@media (prefers-color-scheme:dark){:root{
+  --fundo:#0A0F1A;--cartao:#141B2A;--texto:#E9EEF6;--sec:#9AA6BA;--borda:#232D40;--cromo:#1A2233;
+  --prim:#16438C;--sobrePrimSec:#C6D7F4;--acento:#F5B23A;--sobreAcento:#1A1300;
+  --chipFundo:#3A2A0A;--chipTexto:#F8C76A;--navAtiva:#8DB4FF;--navAtivaFundo:#1B2A47;
+  --verde:#7BD69E;--verdeFundo:#163323;
+  --vidro:rgba(10,15,26,.74);--sombra:rgba(0,0,0,.55);--moldura:#2A3448;--moldura2:#4A5670;
+  --brilho:radial-gradient(60% 50% at 75% 20%,rgba(141,180,255,.10),transparent 70%);
+  --telaFundo:#000000;--telaTexto:#FFFFFF;
+}}
+
 *{box-sizing:border-box}
-body{margin:0;background:var(--fundo);color:var(--texto);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;line-height:1.55}
-main{max-width:640px;margin:0 auto;padding:32px 16px 48px}
-h1{font-size:32px;margin:0 0 4px;font-weight:800}
-.sub{color:var(--sec);margin:0 0 24px}
-.cartao{background:var(--cartao);border:1px solid var(--borda);border-radius:20px;padding:20px;margin-bottom:16px}
-.cartao.destaque{background:var(--prim);border-color:var(--prim);color:#fff}
-.cartao.destaque p{color:#D3E1F7}
-h2{font-size:18px;margin:0 0 8px}
-.botao{display:block;text-align:center;font-weight:700;text-decoration:none;border-radius:14px;padding:14px 16px;margin-top:12px;background:var(--acento);color:var(--sobreAcento)}
-.botao.contorno{background:transparent;color:inherit;border:2px solid currentColor}
-ol{padding-left:20px;margin:8px 0 0}
-ul{padding-left:20px}
-.aviso{font-size:14px;color:var(--sec)}
+html{scroll-behavior:smooth;scroll-padding-top:80px;-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--fundo);background-image:var(--brilho);background-repeat:no-repeat;color:var(--texto);
+  font-family:"Plus Jakarta Sans",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;font-size:16px;line-height:1.6;
+  -webkit-font-smoothing:antialiased;overflow-x:hidden}
+img{display:block;max-width:100%}
 a{color:inherit}
 [hidden]{display:none!important}
+h1,h2,h3{text-wrap:balance}
+.envelope{max-width:1120px;margin:0 auto;padding:0 max(20px,env(safe-area-inset-right)) 0 max(20px,env(safe-area-inset-left))}
+.icone{width:20px;height:20px;flex:none;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.saltar{position:absolute;left:-9999px;top:8px;background:var(--cartao);padding:8px 12px;border-radius:10px;z-index:30}
+.saltar:focus{left:12px}
+:focus-visible{outline:3px solid var(--navAtiva);outline-offset:3px;border-radius:8px}
+.plataforma.sua :focus-visible,.chamada :focus-visible{outline-color:#fff}
+
+/* ---------- Topo ---------- */
+.topo{position:sticky;top:0;z-index:20;background:var(--vidro);-webkit-backdrop-filter:saturate(1.6) blur(16px);backdrop-filter:saturate(1.6) blur(16px);border-bottom:1px solid transparent;transition:border-color .2s ease}
+.topo.rolou{border-bottom-color:var(--borda)}
+.topo .envelope{display:flex;align-items:center;gap:24px;height:64px}
+.marca{display:flex;align-items:center;min-height:44px;gap:10px;text-decoration:none;font-weight:800;font-size:18px;letter-spacing:-.01em}
+.marca img{width:32px;height:32px;border-radius:9px}
+.topo nav{display:flex;gap:4px;margin-left:auto}
+.topo nav a{text-decoration:none;color:var(--sec);font-size:14px;font-weight:600;padding:8px 12px;border-radius:10px;transition:color .15s ease,background-color .15s ease}
+.topo nav a:hover{color:var(--texto);background:var(--cromo)}
+.botao-gh{display:inline-flex;align-items:center;gap:8px;text-decoration:none;font-size:14px;font-weight:700;padding:9px 14px;border-radius:12px;background:var(--cartao);border:1px solid var(--borda);transition:border-color .15s ease}
+.botao-gh:hover{border-color:var(--sec)}
+.botao-gh svg{width:18px;height:18px;fill:currentColor}
+@media (max-width:860px){.topo nav{display:none}.botao-gh{margin-left:auto}}
+
+/* ---------- Botões ---------- */
+.botoes{display:flex;flex-wrap:wrap;gap:12px;margin-top:32px}
+.botao{display:inline-flex;align-items:center;justify-content:center;gap:10px;min-height:52px;padding:0 22px;border-radius:14px;font-weight:700;font-size:16px;text-decoration:none;transition:transform .15s ease,box-shadow .15s ease,background-color .15s ease;border:0;cursor:pointer;font-family:inherit}
+.botao:active{transform:scale(.98)}
+.botao.principal{background:var(--prim);color:#fff;box-shadow:0 10px 24px -10px var(--sombra)}
+.botao.principal:hover{box-shadow:0 14px 30px -10px var(--sombra)}
+.botao.acento{background:var(--acento);color:var(--sobreAcento)}
+.botao.contorno{background:transparent;color:var(--texto);box-shadow:inset 0 0 0 1.5px var(--borda)}
+.botao.contorno:hover{box-shadow:inset 0 0 0 1.5px var(--sec)}
+
+/* ---------- Herói + história com o celular ---------- */
+.historia{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,440px);gap:48px;align-items:start}
+.heroi{min-height:calc(100vh - 64px);min-height:calc(100svh - 64px);display:flex;flex-direction:column;justify-content:center;padding:48px 0}
+.selo{display:inline-flex;align-items:center;gap:8px;align-self:flex-start;font-size:13px;font-weight:700;color:var(--chipTexto);background:var(--chipFundo);padding:6px 12px;border-radius:999px}
+.selo i{width:6px;height:6px;border-radius:50%;background:currentColor}
+h1{font-size:clamp(40px,6.2vw,68px);line-height:1.04;letter-spacing:-.035em;font-weight:800;margin:20px 0 0}
+h1 em{font-style:normal;color:var(--navAtiva)}
+.lead{font-size:clamp(17px,1.6vw,19px);color:var(--sec);max-width:34ch;margin:20px 0 0}
+.nota-oficial{font-size:13px;color:var(--sec);margin:20px 0 0}
+.rolar{display:inline-flex;align-self:flex-start;align-items:center;gap:8px;margin-top:48px;font-size:13px;font-weight:600;color:var(--sec);text-decoration:none}
+.rolar .icone{width:16px;height:16px;animation:desce 2.2s ease-in-out infinite}
+@keyframes desce{0%,100%{transform:translateY(0)}50%{transform:translateY(4px)}}
+
+.passo{min-height:78vh;display:flex;flex-direction:column;justify-content:center;padding:48px 0;transition:opacity .35s ease}
+.js .passo{opacity:.35}
+.js .passo.ativo{opacity:1}
+/* A última etapa ocupa uma tela inteira, para o celular terminar inteiro e centralizado. */
+@media (min-width:901px){#recursos .passo:last-child{min-height:calc(100vh - 64px);min-height:calc(100svh - 64px)}}
+.passo .num{font-size:13px;font-weight:700;color:var(--navAtiva);letter-spacing:.06em;text-transform:uppercase}
+.passo h2{font-size:clamp(28px,3.4vw,40px);line-height:1.12;letter-spacing:-.025em;font-weight:800;margin:10px 0 0;max-width:18ch}
+.passo p{color:var(--sec);font-size:17px;max-width:40ch;margin:14px 0 0}
+.passo ul{list-style:none;padding:0;margin:20px 0 0;display:grid;gap:10px}
+.passo li{display:flex;gap:10px;align-items:flex-start;font-size:15px;font-weight:500}
+.passo li .icone{width:18px;height:18px;margin-top:3px;color:var(--verde)}
+.passo .mini{display:none}
+
+/* Coluna do celular: fica parada enquanto o texto rola. */
+.palco{position:sticky;top:64px;height:calc(100vh - 64px);height:calc(100svh - 64px);display:flex;align-items:center;justify-content:center;perspective:1600px}
+.fone{position:relative;height:min(680px,calc(100svh - 120px));aspect-ratio:393/821;transform-style:preserve-3d;will-change:transform;transform:rotateY(-18deg) rotateX(8deg) rotateZ(-2deg)}
+.fone .caixa{position:absolute;inset:0;border-radius:15.5%/7.2%;background:linear-gradient(140deg,var(--moldura2),var(--moldura) 40%,var(--moldura) 70%,var(--moldura2));padding:3.4%;
+  box-shadow:0 1px 0 1px rgba(255,255,255,.06) inset,0 50px 90px -30px var(--sombra),0 30px 50px -40px rgba(0,0,0,.5)}
+.fone .tela{position:relative;width:100%;height:100%;border-radius:12.6%/5.8%;overflow:hidden;background:var(--telaFundo);color:var(--telaTexto);isolation:isolate;container-type:inline-size}
+/* Barra de status falsa: os prints começam abaixo dela (54 de 852 pontos), como num iPhone. */
+.fone .barra{position:absolute;top:0;left:0;right:0;height:6.34%;display:flex;align-items:center;justify-content:space-between;padding:0 8% 0 10.5%;z-index:3;font-weight:700;font-size:4.2cqw}
+.fone .barra b{font-weight:700;letter-spacing:-.01em}
+.fone .barra svg{width:17.5cqw;height:auto;fill:currentColor}
+.fone .ilha{position:absolute;top:1.5%;left:50%;width:31%;height:3.4%;transform:translateX(-50%);background:#000;border-radius:999px;z-index:3}
+.fone .reflexo{position:absolute;inset:0;border-radius:inherit;z-index:4;pointer-events:none;background:linear-gradient(115deg,rgba(255,255,255,.16),rgba(255,255,255,0) 32%);mix-blend-mode:soft-light}
+.fone .botao-lateral{position:absolute;right:-1.2%;top:24%;width:1.4%;height:11%;border-radius:0 3px 3px 0;background:var(--moldura2)}
+.tela picture{position:absolute;inset:6.34% 0 0 0;opacity:0;transition:opacity .45s ease;z-index:1}
+.tela picture.ativa{opacity:1;z-index:2}
+.tela img{width:100%;height:100%;object-fit:cover;object-position:top}
+
+/* ---------- Seções ---------- */
+.secao{padding:112px 0}
+.secao .cabeca{max-width:640px}
+.secao .rotulo{font-size:13px;font-weight:700;color:var(--navAtiva);letter-spacing:.06em;text-transform:uppercase}
+.secao h2{font-size:clamp(30px,3.6vw,44px);line-height:1.1;letter-spacing:-.03em;font-weight:800;margin:10px 0 0}
+.secao .cabeca p{color:var(--sec);font-size:17px;margin:16px 0 0}
+.grade{display:grid;gap:16px;margin-top:48px}
+.cartao{background:var(--cartao);border:1px solid var(--borda);border-radius:22px;padding:28px}
+.cartao h3{font-size:18px;font-weight:700;letter-spacing:-.01em;margin:0}
+.cartao p{color:var(--sec);font-size:15px;margin:8px 0 0}
+.quadrado{width:44px;height:44px;border-radius:14px;display:grid;place-items:center;background:var(--navAtivaFundo);color:var(--navAtiva);margin-bottom:20px}
+.quadrado.verde{background:var(--verdeFundo);color:var(--verde)}
+.quadrado.ambar{background:var(--chipFundo);color:var(--chipTexto)}
+
+/* Baixar */
+.plataformas{grid-template-columns:repeat(2,minmax(0,1fr))}
+.plataformas.so-uma{grid-template-columns:minmax(0,1fr);max-width:540px}
+.plataforma{display:flex;flex-direction:column}
+.plataforma .topo-cartao{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:20px}
+.plataforma .topo-cartao .quadrado{margin-bottom:0}
+.plataforma .versao{font-size:12px;font-weight:700;color:var(--sec);background:var(--cromo);padding:4px 10px;border-radius:999px}
+.plataforma ol{margin:20px 0 0;padding:0;list-style:none;counter-reset:p;display:grid;gap:12px}
+.plataforma li{counter-increment:p;display:flex;gap:12px;font-size:15px;color:var(--sec)}
+.plataforma li::before{content:counter(p);flex:none;width:24px;height:24px;border-radius:50%;display:grid;place-items:center;font-size:12px;font-weight:700;background:var(--cromo);color:var(--texto)}
+.plataforma li strong{color:var(--texto);font-weight:700}
+.plataforma .botao{margin-top:auto;width:100%}
+.plataforma .espaco{flex:1;min-height:24px}
+.plataforma.sua{background:var(--prim);border-color:var(--prim);color:#fff;order:-1}
+.plataforma.sua p,.plataforma.sua li{color:var(--sobrePrimSec)}
+.plataforma.sua li strong{color:#fff}
+.plataforma.sua li::before{background:rgba(255,255,255,.16);color:#fff}
+.plataforma.sua .versao{background:rgba(255,255,255,.16);color:#fff}
+.plataforma.sua .quadrado{background:rgba(255,255,255,.14);color:#fff}
+.plataforma.sua .botao.principal{background:var(--acento);color:var(--sobreAcento);box-shadow:none}
+.plataforma.sua code{background:rgba(255,255,255,.14);color:#fff}
+.outro{margin:20px 0 0;font-size:14px;color:var(--sec)}
+.outro button{font:inherit;color:var(--navAtiva);font-weight:700;background:none;border:0;padding:0 4px;min-height:44px;cursor:pointer;text-decoration:underline;text-underline-offset:3px}
+code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.88em;background:var(--cromo);padding:2px 6px;border-radius:6px}
+
+/* Privacidade */
+.garantias{grid-template-columns:repeat(4,minmax(0,1fr))}
+.links-politica{display:flex;flex-wrap:wrap;gap:12px;margin-top:24px}
+.link-seta{display:inline-flex;align-items:center;min-height:44px;gap:6px;font-weight:700;font-size:15px;color:var(--navAtiva);text-decoration:none}
+.link-seta:hover{text-decoration:underline;text-underline-offset:3px}
+.link-seta .icone{width:16px;height:16px}
+
+/* Sobre */
+.sobre{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:64px;align-items:start}
+.perguntas{display:grid;gap:12px}
+details{background:var(--cartao);border:1px solid var(--borda);border-radius:18px;padding:0 22px;transition:border-color .15s ease}
+details[open]{border-color:var(--sec)}
+summary{list-style:none;cursor:pointer;display:flex;justify-content:space-between;align-items:center;gap:16px;min-height:60px;font-weight:700;font-size:16px}
+summary::-webkit-details-marker{display:none}
+summary .icone{transition:transform .2s ease;color:var(--sec)}
+details[open] summary .icone{transform:rotate(45deg)}
+details p{color:var(--sec);font-size:15px;margin:0 0 20px}
+
+/* Créditos */
+.pessoas{grid-template-columns:repeat(2,minmax(0,1fr))}
+.pessoa{display:flex;gap:20px;align-items:flex-start}
+.avatar{flex:none;width:56px;height:56px;border-radius:16px;display:grid;place-items:center;font-weight:800;font-size:18px;background:var(--navAtivaFundo);color:var(--navAtiva)}
+.avatar.ambar{background:var(--chipFundo);color:var(--chipTexto)}
+.pessoa .papel{display:inline-block;font-size:12px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--sec);margin:4px 0 0}
+.pessoa h3{font-size:19px}
+
+/* Faixa final */
+.chamada{background:var(--prim);color:#fff;border-radius:28px;padding:56px;display:flex;align-items:center;justify-content:space-between;gap:32px;position:relative;overflow:hidden}
+.chamada::after{content:"";position:absolute;right:-140px;top:-160px;width:360px;height:360px;border-radius:50%;background:radial-gradient(circle,rgba(242,165,22,.22),transparent 65%);pointer-events:none}
+.chamada h2{color:#fff;margin:0;max-width:16ch;font-size:clamp(28px,3.4vw,40px);line-height:1.1;letter-spacing:-.03em;font-weight:800}
+.chamada p{color:var(--sobrePrimSec);margin:12px 0 0;font-size:17px}
+.chamada .botoes{margin:0;position:relative;z-index:1;flex:none}
+.chamada .botao.contorno{color:#fff;box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.5)}
+.chamada .botao.contorno:hover{box-shadow:inset 0 0 0 1.5px #fff}
+
+/* Rodapé */
+.rodape{padding:64px 0 calc(48px + env(safe-area-inset-bottom));border-top:1px solid var(--borda);margin-top:112px;font-size:14px;color:var(--sec)}
+.rodape .envelope{display:grid;grid-template-columns:minmax(0,1.4fr) repeat(2,minmax(0,1fr));gap:40px}
+.rodape .marca{color:var(--texto);display:inline-flex}
+.rodape p{margin:16px 0 0;max-width:42ch}
+.rodape h2{font-size:13px;line-height:1.6;color:var(--texto);margin:0 0 4px;font-weight:700}
+.rodape ul{list-style:none;padding:0;margin:0;display:grid;gap:0}
+.rodape ul a{text-decoration:none;display:inline-flex;align-items:center;min-height:44px}
+.rodape ul a:hover{color:var(--texto);text-decoration:underline;text-underline-offset:3px}
+
+/* ---------- Celular: o aparelho grande vira miniaturas por passo ---------- */
+@media (max-width:900px){
+  .historia{grid-template-columns:minmax(0,1fr);gap:0}
+  .palco{display:none}
+  .heroi{min-height:auto;padding:40px 0 8px}
+  .heroi .fone-heroi{display:flex}
+  .passo,.js .passo{min-height:auto;opacity:1;padding:40px 0}
+  .passo .mini{display:flex;justify-content:center;margin-top:32px;perspective:1200px}
+  .rolar{display:none}
+  .garantias{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .sobre{grid-template-columns:minmax(0,1fr);gap:40px}
+  .chamada{flex-direction:column;align-items:flex-start;padding:40px 28px}
+  .chamada .botoes{align-self:stretch}
+  .rodape{margin-top:72px;padding-top:48px}
+  .rodape .envelope{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .rodape .envelope>div:first-child{grid-column:1/-1}
+  .secao{padding:80px 0}
+}
+.fone-heroi{display:none;justify-content:center;margin-top:48px;perspective:1200px}
+.fone.pequeno{height:auto;width:min(260px,70vw)}
+@media (max-width:640px){
+  .envelope{padding-left:max(16px,env(safe-area-inset-left));padding-right:max(16px,env(safe-area-inset-right))}
+  .plataformas,.pessoas{grid-template-columns:minmax(0,1fr)}
+  .garantias{grid-template-columns:minmax(0,1fr)}
+  .garantias .cartao{display:grid;grid-template-columns:44px minmax(0,1fr);column-gap:16px;align-items:start}
+  .garantias .quadrado{margin:0;grid-row:span 2}
+  .garantias .cartao p{margin-top:4px}
+  .cartao{padding:22px}
+  .botoes .botao{flex:1 1 100%}
+  .pessoa{flex-direction:column;gap:14px}
+}
+@media (prefers-reduced-motion:reduce){
+  html{scroll-behavior:auto}
+  .fone{transform:none!important}
+  .rolar .icone{animation:none}
+  .passo,.tela picture{transition:none}
+}
 </style>
 </head>
 <body>
-<main>
-<h1>UFAC+</h1>
-<p class="sub">Portal do Aluno e RU da Ufac num app só, para Android e iPhone.</p>
+<a class="saltar" href="#conteudo">Pular para o conteúdo</a>
 
-<section class="cartao" id="android">
-  <h2>Android</h2>
-  <p>Instale pelo arquivo <code>.apk</code>. As próximas versões aparecem dentro do app.</p>
-  <ol>
-    <li>Toque em <strong>Baixar para Android</strong> e, na página que abrir, no arquivo <code>ufac-mais-v….apk</code>.</li>
-    <li>Abra o arquivo e permita "instalar apps desta fonte".</li>
-    <li>Entre com seu ID Ufac (Portal e eTICKET).</li>
-  </ol>
-  <a class="botao" href="https://github.com/ufac-plus/ufac-plus/releases/latest">Baixar para Android</a>
-</section>
+<header class="topo" id="topo">
+  <div class="envelope">
+    <a class="marca" href="#" aria-label="UFAC+, início da página"><img src="assets/icone-192.png" alt="" width="32" height="32">UFAC+</a>
+    <nav aria-label="Seções">
+      <a href="#recursos">Recursos</a>
+      <a href="#baixar">Baixar</a>
+      <a href="#privacidade">Privacidade</a>
+      <a href="#sobre">Sobre</a>
+      <a href="#creditos">Créditos</a>
+    </nav>
+    <a class="botao-gh" href="https://github.com/ufac-plus/ufac-plus" rel="noopener">
+      <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z"/></svg>
+      GitHub
+    </a>
+  </div>
+</header>
 
-<section class="cartao" id="iphone">
-  <h2>iPhone</h2>
-  <p>Instale pelo Safari, direto na Tela de Início. Atualiza sozinho.</p>
-  <ol>
-    <li>Abra a página de instalação <strong>no Safari</strong>.</li>
-    <li>Toque em <strong>Compartilhar</strong> e depois em <strong>Adicionar à Tela de Início</strong>.</li>
-  </ol>
-  <a class="botao" href="https://ufac-plus-ios.pages.dev/instalar/">Instalar no iPhone</a>
-</section>
+<main id="conteudo">
+  <!-- Herói e recursos dividem a mesma grade: o celular fica parado à direita e gira enquanto o texto rola. -->
+  <div class="envelope">
+    <div class="historia" id="historia">
+      <div>
+        <section class="heroi" data-tela="boas-vindas" aria-labelledby="titulo">
+          <span class="selo"><i></i>Android e iPhone · grátis</span>
+          <h1 id="titulo">Portal do Aluno e RU <em>num app só</em></h1>
+          <p class="lead">Horários, notas, relatórios, saldo do RU, cardápio e o QR de entrada. Abre na hora e mostra o que já foi carregado mesmo sem internet.</p>
+          <div class="botoes">
+            <a class="botao principal" id="ctaPrincipal" href="#baixar">
+              <svg class="icone" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m0 0-5-5m5 5 5-5M5 21h14"/></svg>
+              <span>Baixar o app</span>
+            </a>
+            <a class="botao contorno" href="https://github.com/ufac-plus/ufac-plus" rel="noopener">Ver o código no GitHub</a>
+          </div>
+          <p class="nota-oficial">App independente, feito por alunos. Não é um aplicativo oficial da Ufac.</p>
+          <a class="rolar" href="#recursos"><svg class="icone" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>Veja por dentro</a>
+          <div class="fone-heroi" aria-hidden="true">
+            <div class="fone pequeno gira"><div class="caixa"><div class="tela"><span class="ilha"></span><span class="barra"><b>9:41</b><svg viewBox="0 0 68 12" aria-hidden="true"><rect x="0" y="7" width="3" height="5" rx="1"/><rect x="5" y="5" width="3" height="7" rx="1"/><rect x="10" y="2.5" width="3" height="9.5" rx="1"/><rect x="15" y="0" width="3" height="12" rx="1"/><path d="M33 3.2a9 9 0 0 1 11 0l-1.4 1.6a6.8 6.8 0 0 0-8.2 0Zm2.6 3a5 5 0 0 1 5.8 0L38.5 9.5Z"/><rect x="47" y=".5" width="18" height="11" rx="3" fill="none" stroke="currentColor" stroke-opacity=".4"/><rect x="49" y="2.5" width="14" height="7" rx="1.6"/><rect x="66" y="4" width="1.6" height="4" rx=".8" fill-opacity=".4"/></svg></span>
+              <picture class="ativa"><source srcset="assets/app/boas-vindas-escuro.webp" media="(prefers-color-scheme: dark)"><img src="assets/app/boas-vindas-claro.webp" alt="" width="393" height="798"></picture>
+              <span class="reflexo"></span></div></div></div>
+          </div>
+        </section>
 
-<p class="aviso" id="outro" hidden>Usa o outro sistema? <a href="#" id="mostrarTodos">Ver as duas versões</a>.</p>
+        <div id="recursos">
+          <section class="passo" data-tela="inicio" aria-labelledby="p1">
+            <span class="num">01 · Início</span>
+            <h2 id="p1">O que importa logo na primeira tela</h2>
+            <p>Seu cartão de aluno com matrícula, período e semestre, o saldo do RU, a próxima aula e a próxima refeição.</p>
+            <ul>
+              <li><svg class="icone" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 5 5L20 7"/></svg>Aviso de feriado na véspera</li>
+              <li><svg class="icone" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 5 5L20 7"/></svg>Sua foto, guardada só no celular</li>
+              <li><svg class="icone" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 5 5L20 7"/></svg>Atividades do Google Classroom, se você conectar</li>
+              <li><svg class="icone" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 5 5L20 7"/></svg>No Android, aba Biblioteca com acervo e empréstimos</li>
+            </ul>
+            <div class="mini" aria-hidden="true"><div class="fone pequeno gira"><div class="caixa"><div class="tela"><span class="ilha"></span><span class="barra"><b>9:41</b><svg viewBox="0 0 68 12" aria-hidden="true"><rect x="0" y="7" width="3" height="5" rx="1"/><rect x="5" y="5" width="3" height="7" rx="1"/><rect x="10" y="2.5" width="3" height="9.5" rx="1"/><rect x="15" y="0" width="3" height="12" rx="1"/><path d="M33 3.2a9 9 0 0 1 11 0l-1.4 1.6a6.8 6.8 0 0 0-8.2 0Zm2.6 3a5 5 0 0 1 5.8 0L38.5 9.5Z"/><rect x="47" y=".5" width="18" height="11" rx="3" fill="none" stroke="currentColor" stroke-opacity=".4"/><rect x="49" y="2.5" width="14" height="7" rx="1.6"/><rect x="66" y="4" width="1.6" height="4" rx=".8" fill-opacity=".4"/></svg></span>
+              <picture class="ativa"><source srcset="assets/app/inicio-escuro.webp" media="(prefers-color-scheme: dark)"><img src="assets/app/inicio-claro.webp" alt="" width="393" height="798" loading="lazy"></picture>
+              <span class="reflexo"></span></div></div></div></div>
+          </section>
 
-<section class="cartao">
-  <h2>O que o app faz</h2>
-  <ul>
-    <li>Seus dados do Portal do Aluno, horários, notas com aviso de faltas e relatórios em PDF.</li>
-    <li>Saldo do RU, QR de entrada que funciona offline, cardápio e histórico.</li>
-    <li>Turmas e atividades do Google Classroom, só para leitura, com a sua autorização.</li>
-    <li>Perfil para professores (Android).</li>
-  </ul>
-  <p>Os dados lidos da Ufac e do Classroom ficam só no seu celular. O app não tem anúncios, não rastreia e não vende nada.</p>
-</section>
+          <section class="passo" data-tela="horarios" aria-labelledby="p2">
+            <span class="num">02 · Horários</span>
+            <h2 id="p2">Sua semana de aulas num relance</h2>
+            <p>As aulas de cada dia em linha do tempo, com o dia de hoje em destaque. Sem caçar a grade no portal.</p>
+            <div class="mini" aria-hidden="true"><div class="fone pequeno gira"><div class="caixa"><div class="tela"><span class="ilha"></span><span class="barra"><b>9:41</b><svg viewBox="0 0 68 12" aria-hidden="true"><rect x="0" y="7" width="3" height="5" rx="1"/><rect x="5" y="5" width="3" height="7" rx="1"/><rect x="10" y="2.5" width="3" height="9.5" rx="1"/><rect x="15" y="0" width="3" height="12" rx="1"/><path d="M33 3.2a9 9 0 0 1 11 0l-1.4 1.6a6.8 6.8 0 0 0-8.2 0Zm2.6 3a5 5 0 0 1 5.8 0L38.5 9.5Z"/><rect x="47" y=".5" width="18" height="11" rx="3" fill="none" stroke="currentColor" stroke-opacity=".4"/><rect x="49" y="2.5" width="14" height="7" rx="1.6"/><rect x="66" y="4" width="1.6" height="4" rx=".8" fill-opacity=".4"/></svg></span>
+              <picture class="ativa"><source srcset="assets/app/horarios-escuro.webp" media="(prefers-color-scheme: dark)"><img src="assets/app/horarios-claro.webp" alt="" width="393" height="798" loading="lazy"></picture>
+              <span class="reflexo"></span></div></div></div></div>
+          </section>
 
-<p class="aviso">App independente, feito por alunos. <strong>Não é um aplicativo oficial da Ufac.</strong></p>
-<p class="aviso"><a href="privacidade.html">Política de Privacidade</a> · <a href="https://github.com/ufac-plus/ufac-plus">Código-fonte</a> · <a href="https://github.com/ufac-plus/ufac-plus/issues">Relatar um problema</a></p>
-<p class="aviso">Contato: henriquereal23@gmail.com</p>
+          <section class="passo" data-tela="notas" aria-labelledby="p3">
+            <span class="num">03 · Notas</span>
+            <h2 id="p3">Notas e faltas sem surpresa</h2>
+            <p>O quadro completo de cada disciplina, com pesos, exame e média final, e um aviso antes de as faltas chegarem ao limite.</p>
+            <div class="mini" aria-hidden="true"><div class="fone pequeno gira"><div class="caixa"><div class="tela"><span class="ilha"></span><span class="barra"><b>9:41</b><svg viewBox="0 0 68 12" aria-hidden="true"><rect x="0" y="7" width="3" height="5" rx="1"/><rect x="5" y="5" width="3" height="7" rx="1"/><rect x="10" y="2.5" width="3" height="9.5" rx="1"/><rect x="15" y="0" width="3" height="12" rx="1"/><path d="M33 3.2a9 9 0 0 1 11 0l-1.4 1.6a6.8 6.8 0 0 0-8.2 0Zm2.6 3a5 5 0 0 1 5.8 0L38.5 9.5Z"/><rect x="47" y=".5" width="18" height="11" rx="3" fill="none" stroke="currentColor" stroke-opacity=".4"/><rect x="49" y="2.5" width="14" height="7" rx="1.6"/><rect x="66" y="4" width="1.6" height="4" rx=".8" fill-opacity=".4"/></svg></span>
+              <picture class="ativa"><source srcset="assets/app/notas-escuro.webp" media="(prefers-color-scheme: dark)"><img src="assets/app/notas-claro.webp" alt="" width="393" height="798" loading="lazy"></picture>
+              <span class="reflexo"></span></div></div></div></div>
+          </section>
+
+          <section class="passo" data-tela="relatorios" aria-labelledby="p4">
+            <span class="num">04 · Relatórios</span>
+            <h2 id="p4">Atestado e histórico sem abrir o portal</h2>
+            <p>Os PDFs do Portal do Aluno, como atestado de matrícula e histórico escolar, para ver, salvar ou compartilhar.</p>
+            <div class="mini" aria-hidden="true"><div class="fone pequeno gira"><div class="caixa"><div class="tela"><span class="ilha"></span><span class="barra"><b>9:41</b><svg viewBox="0 0 68 12" aria-hidden="true"><rect x="0" y="7" width="3" height="5" rx="1"/><rect x="5" y="5" width="3" height="7" rx="1"/><rect x="10" y="2.5" width="3" height="9.5" rx="1"/><rect x="15" y="0" width="3" height="12" rx="1"/><path d="M33 3.2a9 9 0 0 1 11 0l-1.4 1.6a6.8 6.8 0 0 0-8.2 0Zm2.6 3a5 5 0 0 1 5.8 0L38.5 9.5Z"/><rect x="47" y=".5" width="18" height="11" rx="3" fill="none" stroke="currentColor" stroke-opacity=".4"/><rect x="49" y="2.5" width="14" height="7" rx="1.6"/><rect x="66" y="4" width="1.6" height="4" rx=".8" fill-opacity=".4"/></svg></span>
+              <picture class="ativa"><source srcset="assets/app/relatorios-escuro.webp" media="(prefers-color-scheme: dark)"><img src="assets/app/relatorios-claro.webp" alt="" width="393" height="798" loading="lazy"></picture>
+              <span class="reflexo"></span></div></div></div></div>
+          </section>
+
+          <section class="passo" data-tela="ru" aria-labelledby="p5">
+            <span class="num">05 · RU</span>
+            <h2 id="p5">Quanto tem de saldo e o que tem no almoço</h2>
+            <p>O saldo do eTICKET e o cardápio de café, almoço e jantar. A recarga abre o site oficial do eTICKET.</p>
+            <div class="mini" aria-hidden="true"><div class="fone pequeno gira"><div class="caixa"><div class="tela"><span class="ilha"></span><span class="barra"><b>9:41</b><svg viewBox="0 0 68 12" aria-hidden="true"><rect x="0" y="7" width="3" height="5" rx="1"/><rect x="5" y="5" width="3" height="7" rx="1"/><rect x="10" y="2.5" width="3" height="9.5" rx="1"/><rect x="15" y="0" width="3" height="12" rx="1"/><path d="M33 3.2a9 9 0 0 1 11 0l-1.4 1.6a6.8 6.8 0 0 0-8.2 0Zm2.6 3a5 5 0 0 1 5.8 0L38.5 9.5Z"/><rect x="47" y=".5" width="18" height="11" rx="3" fill="none" stroke="currentColor" stroke-opacity=".4"/><rect x="49" y="2.5" width="14" height="7" rx="1.6"/><rect x="66" y="4" width="1.6" height="4" rx=".8" fill-opacity=".4"/></svg></span>
+              <picture class="ativa"><source srcset="assets/app/ru-escuro.webp" media="(prefers-color-scheme: dark)"><img src="assets/app/ru-claro.webp" alt="" width="393" height="798" loading="lazy"></picture>
+              <span class="reflexo"></span></div></div></div></div>
+          </section>
+
+          <section class="passo" data-tela="qr" aria-labelledby="p6">
+            <span class="num">06 · QR de entrada</span>
+            <h2 id="p6">Entre no RU mesmo sem sinal</h2>
+            <p>O QR é gerado no próprio celular e funciona sem internet. No Android, o brilho vai ao máximo sozinho; no iPhone, a tela fica acesa enquanto o QR está aberto.</p>
+            <div class="mini" aria-hidden="true"><div class="fone pequeno gira"><div class="caixa"><div class="tela"><span class="ilha"></span><span class="barra"><b>9:41</b><svg viewBox="0 0 68 12" aria-hidden="true"><rect x="0" y="7" width="3" height="5" rx="1"/><rect x="5" y="5" width="3" height="7" rx="1"/><rect x="10" y="2.5" width="3" height="9.5" rx="1"/><rect x="15" y="0" width="3" height="12" rx="1"/><path d="M33 3.2a9 9 0 0 1 11 0l-1.4 1.6a6.8 6.8 0 0 0-8.2 0Zm2.6 3a5 5 0 0 1 5.8 0L38.5 9.5Z"/><rect x="47" y=".5" width="18" height="11" rx="3" fill="none" stroke="currentColor" stroke-opacity=".4"/><rect x="49" y="2.5" width="14" height="7" rx="1.6"/><rect x="66" y="4" width="1.6" height="4" rx=".8" fill-opacity=".4"/></svg></span>
+              <picture class="ativa"><source srcset="assets/app/qr-escuro.webp" media="(prefers-color-scheme: dark)"><img src="assets/app/qr-claro.webp" alt="" width="393" height="798" loading="lazy"></picture>
+              <span class="reflexo"></span></div></div></div></div>
+          </section>
+        </div>
+      </div>
+
+      <!-- O celular grande (só em telas largas). Os prints usam dados fictícios. -->
+      <div class="palco" aria-hidden="true">
+        <div class="fone" id="fone">
+          <div class="caixa"><div class="tela"><span class="ilha"></span><span class="barra"><b>9:41</b><svg viewBox="0 0 68 12" aria-hidden="true"><rect x="0" y="7" width="3" height="5" rx="1"/><rect x="5" y="5" width="3" height="7" rx="1"/><rect x="10" y="2.5" width="3" height="9.5" rx="1"/><rect x="15" y="0" width="3" height="12" rx="1"/><path d="M33 3.2a9 9 0 0 1 11 0l-1.4 1.6a6.8 6.8 0 0 0-8.2 0Zm2.6 3a5 5 0 0 1 5.8 0L38.5 9.5Z"/><rect x="47" y=".5" width="18" height="11" rx="3" fill="none" stroke="currentColor" stroke-opacity=".4"/><rect x="49" y="2.5" width="14" height="7" rx="1.6"/><rect x="66" y="4" width="1.6" height="4" rx=".8" fill-opacity=".4"/></svg></span>
+            <picture data-tela="boas-vindas" class="ativa"><source srcset="assets/app/boas-vindas-escuro.webp" media="(prefers-color-scheme: dark)"><img src="assets/app/boas-vindas-claro.webp" alt="" width="393" height="798"></picture>
+            <picture data-tela="inicio"><source srcset="assets/app/inicio-escuro.webp" media="(prefers-color-scheme: dark)"><img src="assets/app/inicio-claro.webp" alt="" width="393" height="798"></picture>
+            <picture data-tela="horarios"><source srcset="assets/app/horarios-escuro.webp" media="(prefers-color-scheme: dark)"><img src="assets/app/horarios-claro.webp" alt="" width="393" height="798" loading="lazy"></picture>
+            <picture data-tela="notas"><source srcset="assets/app/notas-escuro.webp" media="(prefers-color-scheme: dark)"><img src="assets/app/notas-claro.webp" alt="" width="393" height="798" loading="lazy"></picture>
+            <picture data-tela="relatorios"><source srcset="assets/app/relatorios-escuro.webp" media="(prefers-color-scheme: dark)"><img src="assets/app/relatorios-claro.webp" alt="" width="393" height="798" loading="lazy"></picture>
+            <picture data-tela="ru"><source srcset="assets/app/ru-escuro.webp" media="(prefers-color-scheme: dark)"><img src="assets/app/ru-claro.webp" alt="" width="393" height="798" loading="lazy"></picture>
+            <picture data-tela="qr"><source srcset="assets/app/qr-escuro.webp" media="(prefers-color-scheme: dark)"><img src="assets/app/qr-claro.webp" alt="" width="393" height="798" loading="lazy"></picture>
+            <span class="reflexo"></span>
+          </div></div>
+          <span class="botao-lateral"></span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Baixar -->
+  <section class="secao" id="baixar" aria-labelledby="t-baixar">
+    <div class="envelope">
+      <div class="cabeca">
+        <span class="rotulo">Baixar</span>
+        <h2 id="t-baixar">Instale em um minuto</h2>
+        <p>Entre com o seu ID Ufac: o CPF e a senha que você já usa no Portal e no eTICKET. As novas versões chegam pelo próprio app.</p>
+      </div>
+      <div class="grade plataformas">
+        <article class="cartao plataforma" id="android">
+          <div class="topo-cartao">
+            <span class="quadrado"><svg class="icone" viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="2" width="12" height="20" rx="3"/><path d="M11 18h2"/></svg></span>
+            <span class="versao">Android 7 ou mais novo</span>
+          </div>
+          <h3>Android</h3>
+          <p>Instale pelo arquivo <code>.apk</code>. O app avisa quando houver versão nova.</p>
+          <ol>
+            <li><span>Toque em <strong>Baixar para Android</strong> e, na página que abrir, no arquivo <code>ufac-mais-v….apk</code>.</span></li>
+            <li><span>Abra o arquivo e permita <strong>instalar apps desta fonte</strong>.</span></li>
+            <li><span>Entre com seu ID Ufac (Portal e eTICKET).</span></li>
+          </ol>
+          <span class="espaco"></span>
+          <a class="botao principal" href="https://github.com/ufac-plus/ufac-plus/releases/latest" rel="noopener">Baixar para Android</a>
+        </article>
+
+        <article class="cartao plataforma" id="iphone">
+          <div class="topo-cartao">
+            <span class="quadrado"><svg class="icone" viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="2" width="12" height="20" rx="3"/><path d="M10 5h4"/></svg></span>
+            <span class="versao">iOS 16.4 ou mais novo</span>
+          </div>
+          <h3>iPhone</h3>
+          <p>Instale pelo Safari, direto na Tela de Início. Atualiza sozinho.</p>
+          <ol>
+            <li><span>Abra a página de instalação <strong>no Safari</strong>.</span></li>
+            <li><span>Toque em <strong>Compartilhar</strong> e depois em <strong>Adicionar à Tela de Início</strong>.</span></li>
+            <li><span>Abra o UFAC+ pela Tela de Início e entre com seu ID Ufac.</span></li>
+          </ol>
+          <span class="espaco"></span>
+          <a class="botao principal" href="https://ufac-plus-ios.pages.dev/instalar/" rel="noopener">Instalar no iPhone</a>
+        </article>
+      </div>
+      <p class="outro" id="outro" hidden>Usa o outro sistema? <button type="button" id="mostrarTodos">Ver as duas versões</button></p>
+    </div>
+  </section>
+
+  <!-- Privacidade -->
+  <section class="secao" id="privacidade" aria-labelledby="t-priv">
+    <div class="envelope">
+      <div class="cabeca">
+        <span class="rotulo">Privacidade</span>
+        <h2 id="t-priv">Seus dados ficam com você</h2>
+        <p>O UFAC+ lê as mesmas páginas que você já acessa e guarda o resultado no seu celular. No iPhone, um repassador sem registros só leva os pedidos até a Ufac. Nenhum servidor guarda suas notas, sua senha ou seus dados do RU, e não há anúncios nem métricas.</p>
+      </div>
+      <div class="grade garantias">
+        <div class="cartao">
+          <span class="quadrado verde"><svg class="icone" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg></span>
+          <h3>Senha só para a Ufac</h3>
+          <p>Sua senha só vai para a Ufac. Para o app entrar sozinho quando a sessão cair, ela fica cifrada no seu celular, e dá para desligar isso nas Configurações.</p>
+        </div>
+        <div class="cartao">
+          <span class="quadrado verde"><svg class="icone" viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="2" width="12" height="20" rx="3"/><path d="M11 18h2"/></svg></span>
+          <h3>Dados no seu celular</h3>
+          <p>Notas, horários, saldo e o número do QR ficam salvos no aparelho. Sair da conta apaga tudo do aparelho.</p>
+        </div>
+        <div class="cartao">
+          <span class="quadrado verde"><svg class="icone" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 4 6v6c0 5 3.4 8.3 8 9 4.6-.7 8-4 8-9V6l-8-3Z"/><path d="m9 12 2 2 4-4"/></svg></span>
+          <h3>Sem anúncios nem rastreio</h3>
+          <p>Nada de métricas de uso, anúncios ou venda de dados. Pagamento só no site oficial do eTICKET.</p>
+        </div>
+        <div class="cartao">
+          <span class="quadrado verde"><svg class="icone" viewBox="0 0 24 24" aria-hidden="true"><path d="m8 7-5 5 5 5M16 7l5 5-5 5"/></svg></span>
+          <h3>Código aberto</h3>
+          <p>Todo o código está no GitHub, para quem quiser conferir o que o app faz e o que não faz.</p>
+        </div>
+      </div>
+      <div class="links-politica">
+        <a class="link-seta" href="privacidade.html">Política de Privacidade <svg class="icone" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14m-6-6 6 6-6 6"/></svg></a>
+      </div>
+    </div>
+  </section>
+
+  <!-- Sobre -->
+  <section class="secao" id="sobre" aria-labelledby="t-sobre">
+    <div class="envelope sobre">
+      <div class="cabeca">
+        <span class="rotulo">Sobre</span>
+        <h2 id="t-sobre">Feito por quem usa</h2>
+        <p>O UFAC+ nasceu da vontade de não precisar abrir dois sites só para ver uma nota ou o saldo do RU. Ele junta o Portal do Aluno e o eTICKET do Restaurante Universitário em telas pensadas para o celular.</p>
+        <p>É um projeto independente e sem fins lucrativos, sem vínculo oficial com a Universidade Federal do Acre, o NTI, a Proaes ou o RU.</p>
+      </div>
+      <div class="perguntas">
+        <details>
+          <summary>É um app oficial da Ufac?<svg class="icone" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></summary>
+          <p>Não. O UFAC+ é independente, feito por alunos. Ele só mostra, de um jeito mais prático, o que você já vê no Portal do Aluno e no eTICKET.</p>
+        </details>
+        <details>
+          <summary>Quanto custa?<svg class="icone" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></summary>
+          <p>Nada. O app é gratuito, sem anúncios e sem compras dentro dele.</p>
+        </details>
+        <details>
+          <summary>Por que não está na Play Store ou na App Store?<svg class="icone" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></summary>
+          <p>Publicar nas lojas é pago e exige um cadastro que não cabe num projeto pequeno. Por isso, no Android o app vem pelo arquivo <code>.apk</code> publicado no GitHub, e no iPhone ele é um app da web instalado pelo Safari.</p>
+        </details>
+        <details>
+          <summary>Funciona para professores?<svg class="icone" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></summary>
+          <p>Sim. Na primeira tela, escolha <strong>Sou professor</strong> para ver turmas e horários do Portal do Professor.</p>
+        </details>
+        <details>
+          <summary>Encontrei um problema. Como aviso?<svg class="icone" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></summary>
+          <p>Use <strong>Relatar um problema</strong>, nas Configurações do app, ou escreva para a gente no <a href="https://github.com/ufac-plus/ufac-plus/issues" rel="noopener">GitHub (aba Issues)</a>. Nunca mande CPF, senha, matrícula ou print do QR.</p>
+        </details>
+      </div>
+    </div>
+  </section>
+
+  <!-- Créditos -->
+  <section class="secao" id="creditos" aria-labelledby="t-creditos">
+    <div class="envelope">
+      <div class="cabeca">
+        <span class="rotulo">Créditos</span>
+        <h2 id="t-creditos">Quem faz o UFAC+</h2>
+      </div>
+      <div class="grade pessoas">
+        <article class="cartao pessoa">
+          <span class="avatar" aria-hidden="true">AH</span>
+          <div>
+            <h3>Arthur Henrique de Souza Cavalcante Ferreira</h3>
+            <span class="papel">Idealizador e criador</span>
+            <p>Idealizou e criou o UFAC+, desenhou as telas e desenvolve o app para Android.</p>
+          </div>
+        </article>
+        <article class="cartao pessoa">
+          <span class="avatar ambar" aria-hidden="true">MB</span>
+          <div>
+            <h3>Matheus Barros Cardoso</h3>
+            <span class="papel">Colaborador · versão iPhone</span>
+            <p>Implementou recursos do app, levou o UFAC+ inteiro para o iPhone como app da web e colabora no site.</p>
+          </div>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <!-- Chamada final -->
+  <div class="envelope">
+    <section class="chamada" aria-labelledby="t-chamada">
+      <div>
+        <h2 id="t-chamada">Notas, horários e RU no seu bolso</h2>
+        <p>Grátis, para Android e iPhone.</p>
+      </div>
+      <div class="botoes">
+        <a class="botao acento" href="#baixar">Baixar o app</a>
+        <a class="botao contorno" href="https://github.com/ufac-plus/ufac-plus" rel="noopener">GitHub</a>
+      </div>
+    </section>
+  </div>
 </main>
+
+<footer class="rodape">
+  <div class="envelope">
+    <div>
+      <a class="marca" href="#"><img src="assets/icone-192.png" alt="" width="32" height="32">UFAC+</a>
+      <p>App independente, feito por alunos em Rio Branco, Acre. <strong>Não é um aplicativo oficial da Ufac.</strong></p>
+    </div>
+    <div>
+      <h2>Projeto</h2>
+      <ul>
+        <li><a href="https://github.com/ufac-plus/ufac-plus" rel="noopener">Código no GitHub</a></li>
+        <li><a href="https://github.com/ufac-plus/ufac-plus/releases" rel="noopener">Versões publicadas</a></li>
+        <li><a href="https://github.com/ufac-plus/ufac-plus/issues" rel="noopener">Relatar um problema</a></li>
+      </ul>
+    </div>
+    <div>
+      <h2>Informações</h2>
+      <ul>
+        <li><a href="privacidade.html">Política de Privacidade</a></li>
+        <li><a href="#sobre">Sobre</a></li>
+        <li><a href="#creditos">Créditos</a></li>
+        <li><a href="mailto:henriquereal23@gmail.com">Contato</a></li>
+      </ul>
+    </div>
+  </div>
+</footer>
+
 <script>
-// Mostra primeiro a versão do celular de quem abriu. No computador, mostra as duas.
+// 1) Mostra primeiro a versão do celular de quem abriu. No computador, mostra as duas.
 (function () {
   var ua = navigator.userAgent || '';
   var ios = /iPhone|iPad|iPod/i.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
@@ -78,15 +566,83 @@ a{color:inherit}
   if (!ios && !android) return;
   var meu = document.getElementById(android ? 'android' : 'iphone');
   var outro = document.getElementById(android ? 'iphone' : 'android');
-  meu.classList.add('destaque');
+  meu.classList.add('sua');
   outro.hidden = true;
+  meu.parentNode.classList.add('so-uma');
   var aviso = document.getElementById('outro');
   aviso.hidden = false;
-  document.getElementById('mostrarTodos').addEventListener('click', function (e) {
-    e.preventDefault();
+  document.getElementById('mostrarTodos').addEventListener('click', function () {
     outro.hidden = false;
     aviso.hidden = true;
+    meu.parentNode.classList.remove('so-uma');
+    outro.setAttribute('tabindex', '-1');
+    outro.focus();
   });
+  // O botão do topo já leva direto ao download certo.
+  var cta = document.getElementById('ctaPrincipal');
+  cta.href = meu.querySelector('.botao').href;
+  cta.querySelector('span').textContent = android ? 'Baixar para Android' : 'Instalar no iPhone';
+})();
+
+// 2) Borda do topo ao rolar.
+(function () {
+  var topo = document.getElementById('topo');
+  var marcar = function () { topo.classList.toggle('rolou', window.scrollY > 8); };
+  window.addEventListener('scroll', marcar, { passive: true });
+  marcar();
+})();
+
+// 3) O celular: troca de tela por seção e gira conforme a rolagem.
+(function () {
+  var parado = window.matchMedia('(prefers-reduced-motion: reduce)');
+  var historia = document.getElementById('historia');
+  var fone = document.getElementById('fone');
+  var telas = fone.querySelectorAll('picture');
+  var secoes = historia.querySelectorAll('section[data-tela]');
+  var minis = document.querySelectorAll('.fone.pequeno.gira');
+
+  function ativar(nome) {
+    telas.forEach(function (t) { t.classList.toggle('ativa', t.dataset.tela === nome); });
+  }
+  var observador = new IntersectionObserver(function (itens) {
+    itens.forEach(function (item) {
+      if (!item.isIntersecting) return;
+      secoes.forEach(function (s) { s.classList.toggle('ativo', s === item.target); });
+      ativar(item.target.dataset.tela);
+    });
+  }, { rootMargin: '-45% 0px -45% 0px' });
+  secoes.forEach(function (s) { observador.observe(s); });
+
+  var largo = window.matchMedia('(min-width: 901px)');
+  var pedido = false;
+  function girar() {
+    pedido = false;
+    if (parado.matches) return;
+    var vh = window.innerHeight;
+    if (largo.matches) {
+      // Celular grande: progresso de 0 a 1 ao longo da história. Começa inclinado, balança e endireita no fim.
+      var r = historia.getBoundingClientRect();
+      var p = Math.min(1, Math.max(0, -r.top / Math.max(1, r.height - vh)));
+      var ry = -18 * Math.cos(p * Math.PI * 3) * (1 - p * 0.65);
+      var rx = 8 - 6 * p;
+      var rz = -2 * Math.cos(p * Math.PI * 2);
+      fone.style.transform = 'rotateY(' + ry.toFixed(2) + 'deg) rotateX(' + rx.toFixed(2) + 'deg) rotateZ(' + rz.toFixed(2) + 'deg)';
+      return;
+    }
+    // Miniaturas (celular): cada uma gira enquanto passa pela tela. Primeiro todas as leituras, depois as escritas.
+    var caixas = Array.prototype.map.call(minis, function (m) { return m.getBoundingClientRect(); });
+    minis.forEach(function (m, i) {
+      var b = caixas[i];
+      if (!b.height || b.bottom < -100 || b.top > vh + 100) return;
+      var c = ((b.top + b.height / 2) - vh / 2) / vh; // -1 (acima) a 1 (abaixo)
+      var lado = i % 2 ? 1 : -1;
+      m.style.transform = 'rotateY(' + (lado * 22 * c).toFixed(2) + 'deg) rotateX(' + (10 * c).toFixed(2) + 'deg)';
+    });
+  }
+  function agendar() { if (!pedido) { pedido = true; requestAnimationFrame(girar); } }
+  window.addEventListener('scroll', agendar, { passive: true });
+  window.addEventListener('resize', agendar);
+  girar();
 })();
 </script>
 </body>
