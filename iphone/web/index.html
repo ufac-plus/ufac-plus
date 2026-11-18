@@ -7,6 +7,8 @@
     <meta name="description" content="Portal do Aluno e RU num lugar só. App independente, feito por um aluno; não é oficial da Ufac.">
     <meta name="theme-color" content="#f3f5f9">
     <meta name="color-scheme" content="light dark">
+    <!-- Tema antes do primeiro desenho (main.js confirma com a preferência salva): sem piscar claro no escuro. -->
+    <script>document.documentElement.dataset.tema = matchMedia('(prefers-color-scheme: dark)').matches ? 'escuro' : 'claro';</script>
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">

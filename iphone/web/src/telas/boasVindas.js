@@ -10,18 +10,18 @@ export default function boasVindas(tela, { ir, acoes }) {
       <img class="marca" src="/icones/icone-192.png" alt="" width="92" height="92">
       <div>
         <h1 class="titulo-app">UFAC+</h1>
-        <div class="apoio" style="font-size:16px;margin-top:4px">Portal do Aluno e RU num lugar só, com seu login da Ufac.</div>
+        <div class="chamada">Portal do Aluno e RU num lugar só, com seu login da Ufac.</div>
       </div>
       ${ehIphone() && !instalado()
         ? html`<a class="faixa tocavel" href="/instalar/">${ic('celular')}<div class="cresce"><div class="titulo">Instale na Tela de Início</div><div>Assim ele abre como app e pode avisar das aulas. Toque para ver como.</div></div></a>`
         : ''}
-      <div class="cartao vidro pilha" style="gap:12px">
+      <div class="cartao pilha" style="gap:14px">
         <div class="linha">${ic('cadeado')}<div><div class="forte">Sua senha só vai para a Ufac</div><div class="apoio">Se você quiser que o app entre sozinho, ela fica cifrada só neste iPhone.</div></div></div>
         <div class="linha">${ic('celular')}<div><div class="forte">Seus dados ficam no seu iPhone</div><div class="apoio">Notas, horários e saldo ficam salvos só aqui.</div></div></div>
       </div>
       <button class="botao largo tocavel" data-acao="aluno">${ic('escola')} Sou aluno</button>
-      <button class="botao largo contorno tocavel" data-acao="professor">Sou professor</button>
-      <div class="apoio" style="text-align:center">App independente, feito por um aluno. Não é um aplicativo oficial da Ufac. <a href="/privacidade/" style="text-decoration:underline">Privacidade</a></div>
+      <button class="botao largo claro tocavel" data-acao="professor">Sou professor</button>
+      <div class="nota-rodape">App independente, feito por um aluno. Não é um aplicativo oficial da Ufac. <a href="/privacidade/" style="text-decoration:underline">Privacidade</a></div>
     </div>`);
   acoes.aluno = () => ir('login/aluno');
   acoes.professor = () => ir('login/professor');

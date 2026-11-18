@@ -1,10 +1,10 @@
 import { ler } from '../lib/armazenamento.js';
 import { atualizarHorarios, atualizarProfessor } from '../lib/dados.js';
 import { aulaValeNoDia } from '../lib/dominio/academico.js';
-import { DIAS, diaDaSemana, formatarHoraMin, rotuloAtualizado } from '../lib/dominio/formatos.js';
+import { DIAS, MESES, diaDaSemana, formatarHoraMin, rotuloAtualizado } from '../lib/dominio/formatos.js';
 import { aulasDoProfessor } from '../lib/dominio/professor.js';
 import { sincronizarAgenda } from '../lib/push.js';
-import { barraCompacta, botaoRedondo, cabecalho, esqueleto, html, montar, remontar, puxarParaAtualizar, vazio } from '../ui/componentes.js';
+import { barraCompacta, botaoRedondo, cabecalho, esqueleto, html, montar, notaRodape, remontar, puxarParaAtualizar, vazio } from '../ui/componentes.js';
 import { avisoSemEticket, faixaExpirada, faixaFalha, fraseDeFalha, expirado } from './comum.js';
 
 export default async function horarios(tela, { ir, perfil, acoes }) {
@@ -29,15 +29,15 @@ export default async function horarios(tela, { ir, perfil, acoes }) {
       ${(await expirado(professor ? 'professor' : 'portal')) && !dados ? faixaExpirada('portal') : ''}
       ${falha ? faixaFalha(falha) : ''}
       ${!aulas
-        ? html`<div class="cartao vidro">${carregando ? esqueleto(4) : vazio('horarios', 'Ainda não li seus horários', 'Puxe para baixo para tentar de novo.')}</div>`
+        ? html`<div class="cartao">${carregando ? esqueleto(4) : vazio('horarios', 'Ainda não li seus horários', 'Puxe para baixo para tentar de novo.')}</div>`
         : dias.map(({ data, lista }) => html`
-          <section class="cartao vidro dia ${diaDaSemana(data) === hoje && data.getDate() === agora.getDate() ? 'hoje' : ''}">
-            <div class="nome"><span>${DIAS[diaDaSemana(data) - 1]}${data.getDate() === agora.getDate() ? ' · hoje' : `, ${data.getDate()}/${data.getMonth() + 1}`}</span></div>
+          <section class="cartao dia ${diaDaSemana(data) === hoje && data.getDate() === agora.getDate() ? 'hoje' : ''}">
+            <h2 class="nome" style="font-size:var(--fs-corpo)"><span>${data.getDate() === agora.getDate() ? `${DIAS[diaDaSemana(data) - 1]} · hoje` : `${DIAS[diaDaSemana(data) - 1]}, ${data.getDate()} de ${MESES[data.getMonth()].slice(0, 3)}`}</span></h2>
             ${lista.length
               ? lista.map((a) => html`<div class="aula"><div class="hora">${formatarHoraMin(a.inicioMin)}<small>${formatarHoraMin(a.fimMin)}</small></div><div class="cresce forte">${a.disciplina}</div></div>`)
               : html`<div class="apoio">Sem aula hoje</div>`}
           </section>`)}
-      ${aulas ? html`<div class="apoio" style="text-align:center">O portal não informa a sala das aulas.</div>` : ''}
+      ${aulas ? notaRodape('O portal não informa a sala das aulas.') : ''}
     `);
   }
 
@@ -58,6 +58,7 @@ export default async function horarios(tela, { ir, perfil, acoes }) {
     }
     await desenhar();
   }
+  tela.addEventListener('atualizar', atualizar);
   puxarParaAtualizar(tela, atualizar);
   if (!tem) await atualizar();
 }

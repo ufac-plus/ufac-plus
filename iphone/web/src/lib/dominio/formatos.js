@@ -33,9 +33,12 @@ export function mascararNumero(numero) {
   return '•'.repeat(numero.length - 4) + numero.slice(-4);
 }
 
-/** "4/11 às 10h20" */
+/** "qua, 4 de nov" (formato curto do projeto). */
+export const formatarDataCurta = (d) => `${DIAS[diaDaSemana(d) - 1].slice(0, 3).toLowerCase()}, ${d.getDate()} de ${MESES[d.getMonth()].slice(0, 3)}`;
+
+/** "4 de nov às 10h20" */
 export const formatarDiaHora = (d) =>
-  `${d.getDate()}/${d.getMonth() + 1} às ${formatarHora(d.getHours(), d.getMinutes())}`;
+  `${d.getDate()} de ${MESES[d.getMonth()].slice(0, 3)} às ${formatarHora(d.getHours(), d.getMinutes())}`;
 
 /** "hoje 23h59", "amanhã 10h", "sex 18h". */
 export function formatarPrazoCurto(prazo, agora) {
@@ -46,7 +49,7 @@ export function formatarPrazoCurto(prazo, agora) {
   return `${DIAS[diaDaSemana(prazo) - 1].slice(0, 3).toLowerCase()} ${hora}`;
 }
 
-/** "Atualizado às 9h40" ou "Atualizado em 3/11 às 9h40". */
+/** "Atualizado às 9h40" ou "Atualizado em 3 de nov às 9h40". */
 export function rotuloAtualizado(quando, agora = new Date()) {
   if (!quando) return 'Ainda não atualizado';
   const d = new Date(quando);

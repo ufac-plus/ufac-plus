@@ -1,4 +1,6 @@
-/* Tokens do CLAUDE.md (seção 6), iguais ao app Android. Aluno = azul, professor = vermelho. */
+/* Tokens da marca (CLAUDE.md, seção 6) com as convenções do iPhone: aluno = azul, professor = âmbar.
+   O tema é sempre resolvido em main.js (data-tema = claro | escuro), então o escuro é escrito uma vez só.
+   Diferenças de plataforma registradas em docs/decisoes.md: fonte SF, escuro "blackout" (preto puro). */
 :root {
   color-scheme: light;
   --bg: #f3f5f9;
@@ -6,11 +8,14 @@
   --text: #0e1726;
   --muted: #536074;
   --border: #e3e8f0;
+  --border-forte: #8a95a6; /* contorno de campos e interruptores: 3:1 sobre surface */
   --chrome: #e6ebf2;
   --primary: #0b4fa8;
+  --on-primary: #ffffff;
   --on-primary-muted: #d3e1f7;
   --accent: #f2a516;
   --on-accent: #1a1300;
+  --accent-linha: #a8690a; /* âmbar para linhas e barras (o #f2a516 some sobre fundo claro) */
   --chip-bg: #fff1d6;
   --chip-text: #7a4a00;
   --nav-active: #0b4fa8;
@@ -19,115 +24,140 @@
   --green-bg: #e1f4e8;
   --danger: #b42318;
   --danger-bg: #fde8e6;
+  --interruptor-ligado: #248a3d;
+  --polegar: var(--surface);
+  --qr-fundo: #ffffff; /* sempre branco, também no escuro: o leitor da catraca precisa */
+  --qr-tinta: #0e1726;
+  --veu: rgba(0, 0, 0, 0.32);
 
-  /* Vidro */
-  --glass-tint: rgba(255, 255, 255, 0.58);
-  --glass-tint-strong: rgba(255, 255, 255, 0.78);
+  /* Vidro: só nos controles que flutuam (abas, botões do topo, folhas, avisos). */
+  --glass-tint: rgba(255, 255, 255, 0.72);
+  --glass-tint-strong: rgba(255, 255, 255, 0.9);
   --glass-rim: rgba(255, 255, 255, 0.95);
   --glass-rim-low: rgba(255, 255, 255, 0.25);
-  --glass-shadow: 0 10px 34px rgba(14, 23, 38, 0.1), 0 1px 3px rgba(14, 23, 38, 0.06);
-  --glass-blur: 22px;
-  --blob-1: rgba(11, 79, 168, 0.22);
-  --blob-2: rgba(242, 165, 22, 0.16);
-  --blob-3: rgba(31, 122, 68, 0.1);
+  --glass-glow: rgba(255, 255, 255, 0.28);
+  --glass-blur: 30px;
+  --blob-1: rgba(11, 79, 168, 0.12);
+  --blob-2: rgba(242, 165, 22, 0.08);
+  --blob-3: rgba(31, 122, 68, 0.05);
 
-  --raio-cartao: 24px;
-  --raio-botao: 16px;
-  --margem: 20px;
+  /* Elevação */
+  --sombra-1: 0 1px 2px rgba(14, 23, 38, 0.05), 0 4px 16px rgba(14, 23, 38, 0.06); /* cartões */
+  --sombra-2: 0 10px 34px rgba(14, 23, 38, 0.1), 0 1px 3px rgba(14, 23, 38, 0.06); /* vidro flutuante */
+  --sombra-3: 0 20px 60px rgba(0, 0, 0, 0.18); /* QR, folhas */
+  --sombra-controle: 0 3px 8px rgba(0, 0, 0, 0.12), 0 1px 1px rgba(0, 0, 0, 0.04);
+  --glass-shadow: var(--sombra-2);
+
+  /* Raios (internos concêntricos: raio do cartão menos o padding) */
+  --raio-xs: 6px;
+  --raio-sm: 12px;
+  --raio-md: 14px;
+  --raio-lg: 22px;
+  --raio-xl: 34px;
+  --raio-pilula: 999px;
+  --raio-cartao: var(--raio-lg);
+  --raio-botao: var(--raio-md);
+  --raio-interno: var(--raio-sm);
+
+  /* Espaço (grade de 4) */
+  --esp-1: 4px;
+  --esp-2: 8px;
+  --esp-3: 12px;
+  --esp-4: 16px;
+  --esp-5: 20px;
+  --esp-6: 24px;
+  --esp-8: 32px;
+  --margem: var(--esp-5);
+
+  /* Tipo: em rem, que acompanha o Tamanho do Texto do iPhone (html usa -apple-system-body; 1rem = 17px no
+     padrão). O min() segura os tamanhos de acessibilidade mais extremos para o layout não quebrar. */
+  --fs-micro: max(11px, min(0.647rem, 16px)); /* 11: rótulo das abas */
+  --fs-rotulo: min(0.706rem, 20px); /* 12 */
+  --fs-legenda: min(0.765rem, 22px); /* 13 */
+  --fs-corpo: min(0.882rem, 26px); /* 15 */
+  --fs-entrada: max(16px, min(1rem, 28px)); /* 17; nunca abaixo de 16 (o Safari dá zoom ao focar) */
+  --fs-titulo-cartao: min(1rem, 28px); /* 17 */
+  --fs-titulo-folha: min(1.176rem, 30px); /* 20 */
+  --fs-titulo-etapa: min(1.294rem, 32px); /* 22 */
+  --fs-titulo-tela: min(2rem, 44px); /* 34: título grande do iOS */
+  --fs-saldo: min(2.588rem, 56px); /* 44 */
+
   --mola: cubic-bezier(0.32, 1.25, 0.42, 1);
   --suave: cubic-bezier(0.25, 0.8, 0.25, 1);
+  --empurra: cubic-bezier(0.2, 0.8, 0.2, 1);
   --fonte: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'SF Pro', system-ui, 'Helvetica Neue', sans-serif;
   --fonte-titulo: -apple-system-headline, -apple-system, BlinkMacSystemFont, 'SF Pro Display', system-ui, sans-serif;
 }
 
+/* Professor: âmbar da Ufac, com texto escuro sobre ele (contraste AA conferido). Perigo igual ao do aluno. */
 :root[data-perfil='professor'] {
-  --primary: #b3261e;
-  --on-primary-muted: #f9d6d3;
-  --nav-active: #b3261e;
-  --nav-active-bg: #fce8e6;
-  --danger: #c4320a;
-  --danger-bg: #fff0ea;
-  --blob-1: rgba(179, 38, 30, 0.2);
+  --primary: #f2a516;
+  --on-primary: #1a1300;
+  --on-primary-muted: #4d3300;
+  --accent: #1a1300;
+  --on-accent: #ffffff;
+  --nav-active: #8a5300;
+  --nav-active-bg: #fff1d6;
+  --blob-1: rgba(242, 165, 22, 0.14);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root:not([data-tema='claro']) {
-    color-scheme: dark;
-    /* Blackout, como o modo escuro do iOS: preto puro (tela OLED apagada) e cinzas do sistema. */
-    --bg: #000000;
-    --surface: #1c1c1e;
-    --text: #ffffff;
-    --muted: #98989f;
-    --border: #2c2c2e;
-    --chrome: #1c1c1e;
-    --primary: #0a4fc4;
-    --on-primary-muted: #d6e4ff;
-    --accent: #ffb32b;
-    --chip-bg: #2e2209;
-    --chip-text: #ffcc66;
-    --nav-active: #0a84ff;
-    --nav-active-bg: #0d1f3a;
-    --green: #30d158;
-    --green-bg: #0f2a17;
-    --danger: #ff453a;
-    --danger-bg: #2c0f0d;
-    --glass-tint: rgba(28, 28, 30, 0.72);
-    --glass-tint-strong: rgba(28, 28, 30, 0.9);
-    --glass-rim: rgba(255, 255, 255, 0.22);
-    --glass-rim-low: rgba(255, 255, 255, 0.05);
-    --glass-shadow: 0 0 #0000;
-    --glass-glow: rgba(255, 255, 255, 0.07);
-    --polegar: #48484a; /* opção marcada nos seletores, como no iOS escuro */
-    --blob-1: transparent;
-    --blob-2: transparent;
-    --blob-3: transparent;
-  }
-  :root[data-perfil='professor']:not([data-tema='claro']) {
-    --primary: #a3201a;
-    --on-primary-muted: #ffd9d5;
-    --nav-active: #ff6961;
-    --nav-active-bg: #2e0f0d;
-    --danger: #ff9f0a;
-    --danger-bg: #2e1a05;
-}
-}
-
+/* Escuro "blackout", como o iOS: preto puro (tela OLED apagada) e cinzas do sistema. */
 :root[data-tema='escuro'] {
   color-scheme: dark;
-  /* Blackout, como o modo escuro do iOS: preto puro (tela OLED apagada) e cinzas do sistema. */
   --bg: #000000;
   --surface: #1c1c1e;
   --text: #ffffff;
   --muted: #98989f;
   --border: #2c2c2e;
+  --border-forte: #6e6e73;
   --chrome: #1c1c1e;
   --primary: #0a4fc4;
+  --on-primary: #ffffff;
   --on-primary-muted: #d6e4ff;
   --accent: #ffb32b;
+  --accent-linha: #ffb32b;
   --chip-bg: #2e2209;
   --chip-text: #ffcc66;
-  --nav-active: #0a84ff;
+  --nav-active: #4a94ff;
   --nav-active-bg: #0d1f3a;
   --green: #30d158;
   --green-bg: #0f2a17;
   --danger: #ff453a;
   --danger-bg: #2c0f0d;
-  --glass-tint: rgba(28, 28, 30, 0.72);
-  --glass-tint-strong: rgba(28, 28, 30, 0.9);
-  --glass-rim: rgba(255, 255, 255, 0.22);
-  --glass-rim-low: rgba(255, 255, 255, 0.05);
-  --glass-shadow: 0 0 #0000;
-  --glass-glow: rgba(255, 255, 255, 0.07);
+  --interruptor-ligado: #30d158;
   --polegar: #48484a; /* opção marcada nos seletores, como no iOS escuro */
+  --veu: rgba(0, 0, 0, 0.5);
+  --glass-tint: rgba(28, 28, 30, 0.8);
+  --glass-tint-strong: rgba(28, 28, 30, 0.94);
+  --glass-rim: rgba(255, 255, 255, 0.12);
+  --glass-rim-low: rgba(255, 255, 255, 0.03);
+  --glass-glow: rgba(255, 255, 255, 0.07);
+  --sombra-1: 0 0 #0000;
+  --sombra-2: 0 0 #0000;
   --blob-1: transparent;
   --blob-2: transparent;
   --blob-3: transparent;
 }
 :root[data-tema='escuro'][data-perfil='professor'] {
-  --primary: #a3201a;
-  --on-primary-muted: #ffd9d5;
-  --nav-active: #ff6961;
-  --nav-active-bg: #2e0f0d;
-  --danger: #ff9f0a;
-  --danger-bg: #2e1a05;
+  --primary: #f5b23a;
+  --on-primary: #1a1300;
+  --on-primary-muted: #4d3300;
+  --accent: #1a1300;
+  --on-accent: #ffffff;
+  --nav-active: #f8c76a;
+  --nav-active-bg: #3a2a0a;
+}
+
+/* Aumentar contraste (Ajustes › Acessibilidade): textos secundários mais escuros e bordas visíveis. */
+@media (prefers-contrast: more) {
+  :root {
+    --muted: #3f4a5c;
+    --border: #8a95a6;
+    --glass-tint: var(--surface);
+    --glass-tint-strong: var(--surface);
+  }
+  :root[data-tema='escuro'] {
+    --muted: #c7c7cc;
+    --border: #6e6e73;
+  }
 }

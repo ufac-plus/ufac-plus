@@ -1,25 +1,36 @@
-/* Liquid Glass do iOS 26 imitado em CSS: desfoque com saturação, borda especular em gradiente,
-   brilho interno no topo e sombra suave. O efeito oficial só existe em app nativo. */
+/* Superfícies.
+   - .cartao: conteúdo. Sólido, com sombra leve (o HIG do Liquid Glass pede vidro só na camada de controles).
+   - .vidro: controles que flutuam sobre o conteúdo (barra de abas, botões do topo, folhas, avisos, barra compacta).
+   O efeito oficial só existe em app nativo; aqui é imitado com desfoque, saturação e uma borda especular discreta. */
+
+.cartao {
+  position: relative;
+  background: var(--surface);
+  border-radius: var(--raio-cartao);
+  box-shadow: var(--sombra-1);
+}
+:root[data-tema='escuro'] .cartao {
+  box-shadow: inset 0 0 0 0.5px var(--border);
+}
 
 .vidro {
   position: relative;
   isolation: isolate;
   background: var(--glass-tint);
-  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(185%);
-  backdrop-filter: blur(var(--glass-blur)) saturate(185%);
-  box-shadow: var(--glass-shadow), inset 0 1px 0 0 var(--glass-rim-low);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(200%);
+  backdrop-filter: blur(var(--glass-blur)) saturate(200%);
+  box-shadow: var(--sombra-2), inset 0 0 0 0.5px var(--glass-rim-low);
   border-radius: var(--raio-cartao);
-  corner-shape: squircle;
 }
 
-/* Borda especular: luz vinda de cima à esquerda, apagando para baixo. */
+/* Borda especular: luz vinda de cima, apagando para baixo (uniforme, sem arcos tortos nos cantos). */
 .vidro::before {
   content: '';
   position: absolute;
   inset: 0;
   border-radius: inherit;
-  padding: 1px;
-  background: linear-gradient(150deg, var(--glass-rim) 0%, var(--glass-rim-low) 34%, transparent 55%, var(--glass-rim-low) 82%, var(--glass-rim) 100%);
+  padding: 0.5px;
+  background: linear-gradient(180deg, var(--glass-rim) 0%, var(--glass-rim-low) 45%, transparent 100%);
   -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
   -webkit-mask-composite: xor;
   mask-composite: exclude;
@@ -27,31 +38,21 @@
   z-index: 1;
 }
 
-/* Brilho interno: a "lente" refletindo a luz no topo. */
-.vidro::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  background: radial-gradient(120% 70% at 20% -10%, var(--glass-glow, rgba(255, 255, 255, 0.28)), transparent 55%);
-  pointer-events: none;
-  z-index: -1;
-  mix-blend-mode: soft-light;
-}
-
 .vidro.forte {
   background: var(--glass-tint-strong);
 }
 
-/* Vidro tingido (cartão do RU, botões de destaque). */
-.vidro.tingido {
-  background: color-mix(in srgb, var(--primary) 82%, transparent);
-  color: #fff;
-  --glass-rim: rgba(255, 255, 255, 0.7);
-  --glass-rim-low: rgba(255, 255, 255, 0.12);
+/* Cartão de destaque (saldo do RU): cor da marca sólida, com um leve degradê para baixo. Sem transparência,
+   para o texto claro sobre ele passar do contraste AA em qualquer fundo. */
+.tingido {
+  background: linear-gradient(165deg, var(--primary) 0%, color-mix(in srgb, var(--primary) 86%, #000) 100%);
+  color: var(--on-primary);
+}
+:root[data-tema='escuro'] .cartao.tingido {
+  box-shadow: none;
 }
 
-/* Fundo com manchas de cor para o vidro ter o que refratar. */
+/* Fundo com manchas de cor bem suaves atrás dos controles de vidro. */
 .fundo {
   position: fixed;
   inset: -20vmax;
@@ -64,9 +65,9 @@
   pointer-events: none;
 }
 
-/* Toque: o vidro "afunda" e acende, como no iOS 26. */
+/* Toque: o elemento "afunda" levemente, como no iOS. */
 .tocavel {
-  transition: transform 260ms var(--mola), filter 200ms var(--suave);
+  transition: transform 260ms var(--mola), filter 200ms var(--suave), opacity 150ms var(--suave);
   -webkit-tap-highlight-color: transparent;
 }
 .tocavel:active {
@@ -80,13 +81,28 @@
   }
 }
 
+/* Reduzir transparência (onde o navegador informa) e Aumentar contraste: vidro vira superfície sólida. */
 @media (prefers-reduced-transparency: reduce) {
   .vidro {
     background: var(--surface);
     -webkit-backdrop-filter: none;
     backdrop-filter: none;
   }
-  .vidro.tingido {
+}
+@media (prefers-contrast: more) {
+  .vidro {
+    background: var(--surface);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+    box-shadow: inset 0 0 0 1px var(--border-forte);
+  }
+  .vidro::before {
+    display: none;
+  }
+  .cartao {
+    box-shadow: inset 0 0 0 1px var(--border-forte);
+  }
+  .tingido {
     background: var(--primary);
   }
 }

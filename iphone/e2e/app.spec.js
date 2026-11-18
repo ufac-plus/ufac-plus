@@ -15,9 +15,10 @@ async function workerFalso(page) {
   return { pedidos: async () => (await page.request.get(`${WORKER}/__pedidos`)).json() };
 }
 
-/** Print depois que as animações terminam. */
+/** Print depois que a tela nova assumiu (uma só .tela, visível) e as animações terminaram. */
 async function print(page, nome, opcoes = {}) {
-  await page.waitForFunction(() => document.getAnimations().every((a) => a.playState !== 'running'));
+  await page.waitForFunction(() => document.querySelectorAll('main.tela').length <= 1 && !document.querySelector('main.tela[style*="hidden"]'));
+  await page.waitForFunction(() => document.getAnimations().every((a) => a.playState !== 'running' || a.effect?.getTiming().iterations === Infinity));
   await page.screenshot({ path: `${PRINTS}/${nome}.png`, ...opcoes });
 }
 
@@ -29,9 +30,9 @@ async function entrar(page) {
   await expect(page.getByLabel('Conta salva no Chaves do iCloud')).toHaveValue('000.000.000-00 · Portal do Aluno');
   await page.getByRole('button', { name: 'Entrar no Portal' }).click();
   // Etapa 2: outra senha, outro item no Chaves.
-  await expect(page.getByText('Agora é outra senha')).toBeVisible();
+  await expect(page.getByText('Agora, a senha do eTICKET')).toBeVisible();
   await expect(page.getByLabel('Conta salva no Chaves do iCloud')).toHaveValue('000.000.000-00 · eTICKET');
-  await page.getByLabel('Senha do eTICKET (ID Ufac)').fill('senha-eticket');
+  await page.getByLabel('Senha do eTICKET').fill('senha-eticket');
   await page.getByRole('button', { name: 'Entrar no eTICKET' }).click();
   await expect(page.getByRole('heading', { name: 'Olá, Pessoa' })).toBeVisible();
 }
@@ -61,11 +62,11 @@ test('login em etapas, claro e escuro', async ({ page }) => {
   await print(page, '12-login-portal');
   await page.getByLabel('Senha do Portal do Aluno').fill('senha-de-teste');
   await page.getByRole('button', { name: 'Entrar no Portal' }).click();
-  await expect(page.getByText('Agora é outra senha')).toBeVisible();
+  await expect(page.getByText('Agora, a senha do eTICKET')).toBeVisible();
   await page.emulateMedia({ colorScheme: 'dark' });
   await print(page, '13-login-eticket-escuro');
   // Senha do Portal no eTICKET: o erro diz qual sistema recusou.
-  await page.getByLabel('Senha do eTICKET (ID Ufac)').fill('senha-de-teste');
+  await page.getByLabel('Senha do eTICKET').fill('senha-de-teste');
   await page.getByRole('button', { name: 'Entrar no eTICKET' }).click();
   await expect(page.getByText('O eTICKET não aceitou')).toBeVisible();
 });
@@ -88,7 +89,7 @@ test('login em 2 etapas e telas do aluno', async ({ page }) => {
   await expect(page.getByText('R$ 12,50').first()).toBeVisible();
   await expect(page.getByText('12345678901')).toBeVisible();
   await expect(page.getByText('Curso Exemplo · Ufac')).toBeVisible();
-  await expect(page.getByText('Próxima refeição · Jantar')).toBeVisible();
+  await expect(page.getByText(/^Jantar · 18h$/)).toBeVisible();
   await print(page, '02-inicio-claro', { fullPage: true });
 
   await page.getByRole('link', { name: 'Horários' }).click();
@@ -110,14 +111,14 @@ test('login em 2 etapas e telas do aluno', async ({ page }) => {
   await print(page, '05-relatorios');
   // Voltar do iPhone (histórico) leva à aba anterior.
   await page.goBack();
-  await expect(page.getByRole('heading', { name: 'Notas' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Notas', exact: true })).toBeVisible();
   await page.goForward();
-  await expect(page.getByRole('heading', { name: 'Relatórios' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Relatórios', exact: true })).toBeVisible();
 
   await page.getByRole('link', { name: 'RU' }).click();
-  await expect(page.getByRole('tab', { name: /Jantar/ })).toHaveAttribute('aria-selected', 'true');
+  await expect(page.getByRole('radio', { name: /Jantar/ })).toHaveAttribute('aria-checked', 'true');
   await expect(page.getByText('O cardápio do jantar ainda não saiu')).toBeVisible();
-  await page.getByRole('tab', { name: /Café/ }).click();
+  await page.getByRole('radio', { name: /Café/ }).click();
   await expect(page.getByText('Café preto')).toBeVisible();
   await print(page, '06-ru');
 
@@ -188,8 +189,8 @@ test('sair apaga tudo', async ({ page }) => {
   await workerFalso(page);
   await entrar(page);
   await page.getByRole('button', { name: 'Menu' }).click();
-  await page.getByRole('button', { name: 'Sair' }).click();
-  await page.getByRole('dialog').getByRole('button', { name: 'Sair' }).click();
+  await page.getByRole('button', { name: 'Sair da conta' }).click();
+  await page.getByRole('dialog').getByRole('button', { name: 'Sair da conta' }).click();
   await expect(page.getByRole('button', { name: 'Sou aluno' })).toBeVisible();
   const restou = await page.evaluate(() => new Promise((ok) => {
     const r = indexedDB.open('ufacplus', 1);
@@ -233,8 +234,8 @@ test('conecta pelo Google (simulado) e mostra as atividades', async ({ page }) =
     return rota.fulfill({ json: corpo, headers: { 'Access-Control-Allow-Origin': '*' } });
   });
   await entrar(page);
-  await page.getByRole('button', { name: 'Conectar Classroom' }).click();
-  await expect(page.getByText('Classroom conectado.')).toBeVisible();
+  await page.getByRole('button', { name: 'Conectar o Classroom' }).click();
+  await expect(page.locator('.aviso-toast').getByText('Classroom conectado.')).toBeVisible();
   await expect(page).toHaveURL(/\/#\/inicio$/);
   await expect(page.getByText('Fichamento do capítulo 3')).toBeVisible();
   await expect(page.getByRole('link', { name: 'Abrir o Classroom' })).toBeVisible();
@@ -243,7 +244,7 @@ test('conecta pelo Google (simulado) e mostra as atividades', async ({ page }) =
   await page.goto('/#/configuracoes');
   await page.getByText('Desconectar o Classroom').click();
   await page.getByRole('button', { name: 'Desconectar', exact: true }).click();
-  await expect(page.getByText('Classroom desconectado.')).toBeVisible();
+  await expect(page.locator('.aviso-toast').getByText('Classroom desconectado.')).toBeVisible();
   expect(await (await page.request.get('http://localhost:8787/__pedidos')).json()).toContain('POST /google/desconectar');
 });
 });
@@ -290,9 +291,9 @@ test('Início e RU atualizam sem recriar os cartões (sem piscar)', async ({ pag
   expect(await mantidos()).toBe(true);
 
   await page.getByRole('link', { name: 'RU' }).click();
-  await expect(page.getByRole('heading', { name: 'RU' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'RU', exact: true })).toBeVisible();
   await marcar();
-  await page.getByRole('tab', { name: /Café/ }).click();
+  await page.getByRole('radio', { name: /Café/ }).click();
   await expect(page.getByText('Café preto')).toBeVisible();
   expect(await mantidos()).toBe(true);
 });
@@ -311,27 +312,31 @@ test('entrar sem o eTICKET: aviso em todas as abas e conectar depois', async ({ 
   const worker = await workerFalso(page);
   await entrarSoNoPortal(page);
   // Senha errada no eTICKET: a faixa de erro oferece seguir só com o Portal.
-  await page.getByLabel('Senha do eTICKET (ID Ufac)').fill('senha-errada');
+  await page.getByLabel('Senha do eTICKET').fill('senha-errada');
   await page.getByRole('button', { name: 'Entrar no eTICKET' }).click();
   await expect(page.getByText('O eTICKET não aceitou o CPF ou a senha')).toBeVisible();
   await print(page, '30-login-sem-eticket');
   const antes = (await worker.pedidos()).length;
-  await page.getByRole('button', { name: 'Continuar sem', exact: true }).click();
+  await page.getByRole('button', { name: 'Continuar só com o Portal', exact: true }).click();
   await page.getByRole('button', { name: 'Continuar sem o eTICKET' }).last().click();
   await expect(page.getByRole('heading', { name: 'Olá, Pessoa' })).toBeVisible();
 
-  const aviso = page.locator('.faixa.eticket');
-  await expect(aviso).toHaveCount(1);
+  // Na Início e no RU, o convite é o próprio cartão do saldo (uma chamada só); em Horários e Relatórios, uma faixa.
+  // Em Notas não há convite (não tem relação com o RU).
+  const conectarNoCartao = page.locator('main:not([style*="hidden"]) .tingido').getByRole('button', { name: 'Conectar o eTICKET' });
+  await expect(conectarNoCartao).toHaveCount(1);
+  await expect(page.locator('.faixa.eticket')).toHaveCount(0);
   await expect(page.getByText('Sua sessão do eTICKET terminou')).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Mostrar QR' })).toHaveCount(0);
   await print(page, '31-inicio-sem-eticket');
-  for (const [aba, titulo] of [['Horários', 'Horários'], ['Notas', 'Notas'], ['Relatórios', 'Relatórios'], ['RU', 'RU']]) {
+  for (const [aba, faixas] of [['Horários', 1], ['Notas', 0], ['Relatórios', 1], ['RU', 0]]) {
     await page.locator('.abas').getByText(aba, { exact: true }).click();
-    await expect(page.locator('main[data-tela]').getByRole('heading', { name: titulo, exact: true })).toBeVisible();
-    await expect(page.locator('main:not([style*="hidden"]) .faixa.eticket')).toHaveCount(1);
+    await expect(page.locator('main[data-tela]').getByRole('heading', { name: aba, exact: true })).toBeVisible();
+    await expect(page.locator('main:not([style*="hidden"]) .faixa.eticket')).toHaveCount(faixas);
   }
+  await expect(conectarNoCartao).toHaveCount(1);
   // O cardápio vem da página pública, sem login.
-  await page.getByRole('tab', { name: /Café/ }).click();
+  await page.getByRole('radio', { name: /Café/ }).click();
   await expect(page.getByText('Café preto')).toBeVisible();
   await print(page, '32-ru-sem-eticket');
   // Depois de pular, nenhum pedido ao eTICKET além do cardápio público.
@@ -339,14 +344,14 @@ test('entrar sem o eTICKET: aviso em todas as abas e conectar depois', async ({ 
   expect(depois.some((p) => p.includes('/eticket/menuExterno/'))).toBe(true);
   expect(depois.filter((p) => /^\w+ \/eticket\//.test(p) && !p.includes('/eticket/menuExterno/'))).toEqual([]);
 
-  // Conectar depois, pelo aviso.
-  await page.locator('main:not([style*="hidden"]) .faixa.eticket').getByRole('button', { name: 'Conectar' }).click();
+  // Conectar depois, pelo cartão do RU.
+  await conectarNoCartao.click();
   await expect(page.getByText('Ainda não tem acesso ao eTICKET?')).toHaveCount(0); // no Conectar não se oferece pular
   await page.getByLabel('CPF').fill('00000000000');
-  await page.getByLabel('Senha do eTICKET (ID Ufac)').fill('senha-eticket');
+  await page.getByLabel('Senha do eTICKET').fill('senha-eticket');
   await page.getByRole('button', { name: 'Entrar no eTICKET' }).click();
   await expect(page.getByRole('heading', { name: 'Olá, Pessoa' })).toBeVisible();
-  await expect(page.locator('.faixa.eticket')).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Conectar o eTICKET' })).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Mostrar QR' })).toBeVisible();
 });
 
@@ -355,29 +360,29 @@ test('sem eTICKET pelo cartão: cancelar mantém a etapa; senha errada no Conect
   await entrarSoNoPortal(page);
   await page.getByRole('button', { name: 'Continuar sem o eTICKET' }).click();
   await page.getByRole('button', { name: 'Cancelar' }).click();
-  await expect(page.getByLabel('Senha do eTICKET (ID Ufac)')).toBeVisible();
+  await expect(page.getByLabel('Senha do eTICKET')).toBeVisible();
   await page.getByRole('button', { name: 'Continuar sem o eTICKET' }).first().click();
   await page.getByRole('button', { name: 'Continuar sem o eTICKET' }).last().click();
   await expect(page.getByRole('heading', { name: 'Olá, Pessoa' })).toBeVisible();
 
   // Senha errada no Conectar: erro normal (Relatar), e o aviso continua na Início.
-  await page.locator('.faixa.eticket').getByRole('button', { name: 'Conectar' }).click();
+  await page.getByRole('button', { name: 'Conectar o eTICKET' }).click();
   await page.getByLabel('CPF').fill('00000000000');
-  await page.getByLabel('Senha do eTICKET (ID Ufac)').fill('senha-errada');
+  await page.getByLabel('Senha do eTICKET').fill('senha-errada');
   await page.getByRole('button', { name: 'Entrar no eTICKET' }).click();
   await expect(page.getByRole('button', { name: 'Relatar', exact: true })).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Continuar sem', exact: true })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Continuar só com o Portal', exact: true })).toHaveCount(0);
   await page.getByRole('button', { name: 'Voltar' }).click();
-  await expect(page.locator('.faixa.eticket')).toHaveCount(1);
+  await expect(page.getByRole('button', { name: 'Conectar o eTICKET' })).toHaveCount(1);
 
   // Sair apaga a escolha: o próximo login completo não mostra o aviso.
   await page.getByRole('button', { name: 'Menu' }).click();
   await page.getByRole('button', { name: 'Configurações' }).click();
   await expect(page.getByText('Conectar o eTICKET do RU')).toBeVisible();
   await page.getByRole('button', { name: 'Voltar' }).click();
-  await page.getByRole('button', { name: 'Sair' }).click();
-  await page.getByRole('dialog').getByRole('button', { name: 'Sair' }).click();
+  await page.getByRole('button', { name: 'Sair da conta' }).click();
+  await page.getByRole('dialog').getByRole('button', { name: 'Sair da conta' }).click();
   await expect(page.getByRole('button', { name: 'Sou aluno' })).toBeVisible();
   await entrar(page);
-  await expect(page.locator('.faixa.eticket')).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Conectar o eTICKET' })).toHaveCount(0);
 });

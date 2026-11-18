@@ -1,11 +1,11 @@
 import { SemConexao } from '../lib/api.js';
 import { ler } from '../lib/armazenamento.js';
 import { atualizarCardapio, atualizarRu } from '../lib/dados.js';
-import { INSTAGRAM_RU, URL_RECARGA } from '../lib/config.js';
-import { formatarData, formatarHoraMin, formatarMoeda, rotuloAtualizado } from '../lib/dominio/formatos.js';
+import { INSTAGRAM_RU } from '../lib/config.js';
+import { formatarData, formatarHoraMin } from '../lib/dominio/formatos.js';
 import { REFEICOES, cardapioValeEm, itensDoCardapio, proximaRefeicao } from '../lib/dominio/refeicoes.js';
-import { barraCompacta, botaoRedondo, cabecalho, esqueleto, html, ic, item, montar, puxarParaAtualizar, remontar, segmentos } from '../ui/componentes.js';
-import { avisoSemEticket, expirado, faixaExpirada, faixaFalha, fraseDeFalha, semEticket } from './comum.js';
+import { abreFora, barraCompacta, botaoRedondo, cabecalho, esqueleto, html, ic, item, marcarSegmento, montar, puxarParaAtualizar, remontar, segmentos } from '../ui/componentes.js';
+import { cartaoSaldo, expirado, faixaExpirada, faixaFalha, fraseDeFalha, semEticket } from './comum.js';
 import { abrirQr } from './qr.js';
 
 /** Diz se o eTICKET ainda não publicou (e quando conferimos) ou se a refeição já passou sem cardápio. */
@@ -30,31 +30,23 @@ export default async function ru(tela, { ir, parametro, acoes }) {
     const semRu = await semEticket();
     remontar(tela.querySelector('.pilha'), html`
       ${cabecalho({ titulo: 'RU', sub: 'Restaurante Universitário · Ufac', acoes: botaoRedondo('menu', 'Menu', 'menu') })}
-      ${await avisoSemEticket()}
       ${(await expirado('eticket')) ? faixaExpirada('eticket') : ''}
       ${falha ? faixaFalha(falha) : ''}
-      <section class="cartao vidro tingido">
-        <div class="rotulo">Saldo</div>
-        ${semRu ? html`<div class="saldo">—</div><div class="apoio">eTICKET não conectado</div>` : saldo ? html`<div class="saldo">${formatarMoeda(saldo.saldo)}</div><div class="apoio">${rotuloAtualizado(saldo.lidoEm, agora)}</div>` : carregando ? html`<div class="esqueleto" style="height:44px;width:55%;margin:8px 0;opacity:.4"></div>` : html`<div class="saldo">—</div>`}
-        ${semRu
-          ? html`<button class="botao acento largo tocavel" style="margin-top:14px" data-acao="conectar-eticket">${ic('ru')} Conectar o eTICKET</button>`
-          : html`<button class="botao acento largo tocavel" style="margin-top:14px" data-acao="qr">${ic('qr')} Mostrar QR de entrada</button>`}
-        ${semRu
-          ? html`<div class="apoio" style="margin-top:8px;text-align:center">O cardápio abaixo funciona sem o eTICKET.</div>`
-          : html`<a class="botao contorno largo tocavel" style="margin-top:10px" href="${URL_RECARGA}" target="_blank" rel="noopener">${ic('mais')} Recarregar créditos</a>
-        <div class="apoio" style="margin-top:8px;text-align:center">A recarga abre o site oficial do eTICKET no Safari.</div>`}
-      </section>
-      <section class="cartao vidro">
-        <h2>Cardápio de hoje <span class="apoio" style="font-weight:500">· ${formatarData(agora)}</span></h2>
-        ${segmentos(REFEICOES.map((r) => ({ id: r.id, nome: r.nome, sub: formatarHoraMin(r.inicioMin) })), escolhida, 'refeicao')}
+      ${cartaoSaldo({ ru: saldo, semRu, carregando, agora, largo: true, rotulo: 'Saldo' })}
+      <section class="cartao" aria-labelledby="titulo-cardapio">
+        <h2 id="titulo-cardapio" style="margin-bottom:2px">Cardápio de hoje</h2>
+        <div class="apoio" style="margin-bottom:12px">${formatarData(agora)}</div>
+        ${segmentos(REFEICOES.map((r) => ({ id: r.id, nome: r.nome, sub: formatarHoraMin(r.inicioMin) })), escolhida, 'refeicao', 'Refeição')}
+        <div aria-live="polite">
         ${itens.length
-          ? html`<ul style="margin:0;padding-left:20px;line-height:1.9">${itens.map((i) => html`<li>${i}</li>`)}</ul>`
+          ? html`<ul class="lista-cardapio">${itens.map((i) => html`<li>${i}</li>`)}</ul>`
           : carregando && !deHoje
             ? esqueleto(3)
-            : html`<div class="apoio" style="font-size:15px">${fraseSemCardapio(refeicao, cardapio, deHoje, agora)}</div>
-                <a class="botao claro largo tocavel" style="margin-top:12px" href="${INSTAGRAM_RU}" target="_blank" rel="noopener">${ic('camera')} Ver no Instagram do RU</a>`}
+            : html`<div class="apoio" style="font-size:var(--fs-corpo)">${fraseSemCardapio(refeicao, cardapio, deHoje, agora)}</div>
+                <a class="botao claro largo tocavel" style="margin-top:12px" href="${INSTAGRAM_RU}" target="_blank" rel="noopener">${ic('camera')} Ver no Instagram do RU${abreFora}</a>`}
+        </div>
       </section>
-      <section class="cartao vidro lista" style="padding:4px 0">
+      <section class="cartao lista">
         ${item({ icone: 'historico', titulo: 'Histórico de uso', sub: semRu ? 'Precisa do eTICKET conectado' : 'Refeições e recargas', acao: semRu ? 'conectar-eticket' : 'historico' })}
       </section>
     `);
@@ -84,11 +76,11 @@ export default async function ru(tela, { ir, parametro, acoes }) {
   acoes['entrar-eticket'] = () => ir('login/eticket');
   acoes.refeicao = (el) => {
     escolhida = el.dataset.valor;
-    const seg = tela.querySelector('.segmentos');
-    seg?.style.setProperty('--i', REFEICOES.findIndex((r) => r.id === escolhida));
+    marcarSegmento(el);
     setTimeout(desenhar, 160);
   };
   tela.addEventListener('sessao', desenhar);
+  tela.addEventListener('atualizar', (e) => atualizar(!!e.detail?.forcar));
   puxarParaAtualizar(tela, () => atualizar(true));
   await atualizar(false);
 }

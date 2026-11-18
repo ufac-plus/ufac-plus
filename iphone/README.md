@@ -31,6 +31,10 @@ Versão do UFAC+ para iPhone, como app da web instalável (PWA). Fica na pasta `
 | Live Activities / avisos locais | Web Push (aula 15 min antes, refeição, Classroom às 19h) + selo no ícone | Live Activities não existem em PWA. |
 | Recarga, chamada e notas do professor dentro do app | Abrem o site oficial no Safari (a Ufac pede login lá) | Pagamento e lançamentos só no fluxo oficial. |
 | Classroom com o SDK do Android | Fluxo de código com PKCE por redirecionamento, só leitura; leituras direto do iPhone para o Google | O Worker só troca o código e renova (precisa do client secret) e devolve a autorização cifrada, que fica no iPhone. Nada é guardado no Worker. |
+| Fonte Plus Jakarta Sans, títulos 24–26 px peso 800 | Fonte do sistema (SF), título grande do iOS (34/700), rótulos em frase normal | Mesma marca, convenções da plataforma (revisão de design de 17/11/2026). |
+| Escuro azulado (`#0A0F1A`) | Escuro “blackout” (preto puro e cinzas do iOS), com a marca por cima | Padrão do iPhone e economiza bateria na tela OLED; contrastes AA conferidos. |
+| Cartões de vidro | Cartões sólidos; vidro só nos controles que flutuam (abas, botões do topo, folhas, avisos) | O HIG do Liquid Glass pede vidro só na camada de controles; no conteúdo ele custa desempenho e atrapalha a leitura. |
+| Tamanhos fixos | Texto em `rem` sobre `-apple-system-body`: acompanha Ajustes › Tamanho do Texto, com teto nos tamanhos extremos | Dynamic Type do iPhone. |
 
 ## Rodar no Mac
 
@@ -139,3 +143,6 @@ Bug ou ideia nova: `gh issue create` com as etiquetas certas. Criar, comentar ou
 - Se o portal ou o eTICKET aceitam o login vindo do Worker (IP da Cloudflare). Nas leituras públicas de teste (sem login) os dois responderam normalmente.
 - O popup do Google no app instalado (no iOS, o PWA às vezes abre o Google numa folha separada).
 - O visualizador de PDF em `<iframe>` (o iOS 18+ mostra todas as páginas; versões antigas, só a primeira, e aí vale o botão Compartilhar).
+- A vibração leve (QR, copiar matrícula, puxar para atualizar): usa o interruptor nativo do iOS 18+ (`vibrarLeve()` em `web/src/ui/componentes.js`), que o emulador não reproduz.
+- Compartilhar o PDF depois de uma espera longa: se o Safari recusar (`NotAllowedError`), o app abre o visualizador, e o Compartilhar de lá vem de um toque novo.
+- O gesto de voltar pela borda esquerda e o Tamanho do Texto no máximo (Ajustes › Acessibilidade › Texto Maior).

@@ -50,10 +50,11 @@ export async function aplicarAparencia() {
   const perfil = (await ler('perfil')) ?? 'aluno';
   const raiz = document.documentElement;
   raiz.dataset.perfil = perfil;
-  if (prefs.tema === 'claro' || prefs.tema === 'escuro') raiz.dataset.tema = prefs.tema;
-  else delete raiz.dataset.tema;
+  // O tema fica sempre resolvido (também em "Sistema"): o CSS do escuro existe uma vez só, em [data-tema='escuro'].
   const escuro = prefs.tema === 'escuro' || (prefs.tema !== 'claro' && matchMedia('(prefers-color-scheme: dark)').matches);
-  document.querySelector('meta[name="theme-color"]')?.setAttribute('content', escuro ? '#000000' : '#f3f5f9');
+  raiz.dataset.tema = escuro ? 'escuro' : 'claro';
+  const fundo = getComputedStyle(raiz).getPropertyValue('--bg').trim();
+  document.querySelector('meta[name="theme-color"]')?.setAttribute('content', fundo || (escuro ? '#000000' : '#f3f5f9'));
 }
 
 function rotaAtual() {
@@ -71,12 +72,26 @@ export function ir(rota, { substituir = false } = {}) {
 
 export const voltar = () => (history.length > 1 ? history.back() : ir('inicio'));
 
+// Profundidade de cada tela fora das abas: maior = mais "para dentro". Define a direção da transição.
+const NIVEL = { menu: 1, historico: 1, turma: 1, configuracoes: 2, relatar: 3 };
+const MODAIS = new Set(['menu']); // sobem de baixo (têm X); as outras entram da direita (têm ‹)
+const nivelDe = (nome) => NIVEL[nome] ?? 0;
+const rolagemPorAba = new Map(); // a aba guarda onde estava ao voltar para ela
+
+function marcarAba(barra, nome) {
+  const abas = [...barra.querySelectorAll('.aba')];
+  const i = abas.findIndex((a) => a.dataset.aba === nome);
+  if (i >= 0) barra.style.setProperty('--i', i);
+  abas.forEach((a) => (a.dataset.aba === nome ? a.setAttribute('aria-current', 'page') : a.removeAttribute('aria-current')));
+}
+
 async function barraDeAbas(perfil, nome) {
   const abas = ABAS[perfil];
   const i = abas.findIndex(([id]) => id === nome);
   let barra = document.querySelector('.abas');
   if (i < 0) {
     barra?.remove();
+    document.querySelector('.borda-rolagem')?.remove();
     return;
   }
   if (!barra || barra.dataset.perfil !== perfil) {
@@ -86,14 +101,38 @@ async function barraDeAbas(perfil, nome) {
     barra.dataset.perfil = perfil;
     barra.setAttribute('aria-label', 'Seções');
     barra.style.setProperty('--n', abas.length);
-    montar(barra, html`<span class="lente"></span>${abas.map(([id, rotulo, icone]) => html`<a class="aba tocavel" href="#/${id}" data-aba="${id}">${ic(icone)}<span>${rotulo}</span></a>`)}`);
+    montar(barra, html`<span class="lente" aria-hidden="true"></span>${abas.map(([id, rotulo, icone]) => html`<a class="aba tocavel" href="#/${id}" data-aba="${id}">${ic(icone)}<span>${rotulo}</span></a>`)}`);
+    // A aba responde no próprio toque (a tela nova chega logo depois). Tocar na aba atual sobe ao topo, como no iOS.
+    barra.addEventListener('click', (e) => {
+      const aba = e.target.closest('.aba');
+      if (!aba) return;
+      if (aba.getAttribute('aria-current') === 'page') {
+        e.preventDefault();
+        telaAtual?.scrollTo({ top: 0, behavior: 'smooth' });
+        return;
+      }
+      marcarAba(barra, aba.dataset.aba);
+    });
+    if (!document.querySelector('.borda-rolagem')) {
+      const borda = document.createElement('div');
+      borda.className = 'borda-rolagem';
+      borda.setAttribute('aria-hidden', 'true');
+      document.body.append(borda);
+    }
     document.body.append(barra);
   }
-  barra.style.setProperty('--i', i);
-  barra.querySelectorAll('.aba').forEach((a) => (a.dataset.aba === nome ? a.setAttribute('aria-current', 'page') : a.removeAttribute('aria-current')));
+  marcarAba(barra, nome);
 }
 
 let geracao = 0;
+let primeiraTela = true;
+
+/** Fim de uma animação de CSS, com prazo (movimento reduzido não anima). */
+const fimDaAnimacao = (el, ms) => new Promise((ok) => {
+  const pronto = () => (clearTimeout(prazo), ok());
+  const prazo = setTimeout(pronto, ms);
+  el.addEventListener('animationend', pronto, { once: true });
+});
 
 async function renderizar() {
   const minha = ++geracao;
@@ -123,6 +162,8 @@ async function renderizar() {
     'conectar-eticket': () => ir('login/eticket'),
     // A troca de senha é no site oficial, no Safari: o app nunca recebe a senha nova antes do login.
     'trocar-senha-portal': () => window.open(perfil === 'professor' ? URL_PORTAL_PROFESSOR : URL_PORTAL_ALUNO, '_blank', 'noopener'),
+    // "Tentar de novo" das faixas de falha: a tela atualiza no lugar (cada tela que lê dados ouve "atualizar").
+    'tentar-de-novo': () => tela.dispatchEvent(new CustomEvent('atualizar', { detail: { forcar: true } })),
   };
   tela.addEventListener('click', (e) => {
     const alvo = e.target.closest('[data-acao]');
@@ -136,7 +177,7 @@ async function renderizar() {
   ctx.acoes = acoes;
 
   // Sem piscar: a tela nova monta escondida, por baixo da antiga, e só troca quando já tem conteúdo
-  // (o primeiro cartão ou cabeçalho), ou depois de 300 ms. A animação de entrada é em CSS (.entra).
+  // (o primeiro cartão ou cabeçalho), ou depois de 300 ms.
   tela.style.visibility = 'hidden';
   app.append(tela);
   const temConteudo = () => !!tela.querySelector('.cabecalho, .cartao, form, h1');
@@ -152,14 +193,75 @@ async function renderizar() {
     tela.remove(); // outra navegação já assumiu
     return;
   }
-  telaAtual?.remove();
+
+  // A cascata de entrada (.entra) vale só para a abertura do app. Entre abas a troca é instantânea, como no iOS;
+  // telas empilhadas deslizam (da direita, ou de baixo no Menu) e voltam pelo mesmo caminho.
+  const velha = telaAtual;
+  const nomeVelho = velha?.dataset.tela;
+  if (!primeiraTela) tela.querySelectorAll('.entra').forEach((e) => e.classList.remove('entra'));
+  if (velha && ABAS[perfil].some(([id]) => id === nomeVelho)) rolagemPorAba.set(nomeVelho, velha.scrollTop);
+  const indo = nivelDe(nome) > nivelDe(nomeVelho);
+  const vindo = nivelDe(nome) < nivelDe(nomeVelho);
   tela.style.visibility = '';
   telaAtual = tela;
   barraDeAbas(perfil, comAbas ? nome : '');
-  // A animação de entrada vale só para a chegada na tela: atualizações não fazem os cartões piscarem.
-  setTimeout(() => tela.querySelectorAll('.entra').forEach((e) => e.classList.remove('entra')), 650);
+  document.title = `${tela.querySelector('h1')?.textContent.trim() || 'UFAC+'} · UFAC+`;
+  if (comAbas && rolagemPorAba.has(nome)) tela.scrollTop = rolagemPorAba.get(nome);
+
+  if (velha && indo) {
+    tela.classList.add(MODAIS.has(nome) ? 'anim-modal' : 'anim-empurra');
+    velha.classList.add('anim-recua');
+    fimDaAnimacao(tela, 420).then(() => {
+      velha.remove();
+      tela.classList.remove('anim-modal', 'anim-empurra');
+    });
+  } else if (velha && vindo) {
+    app.insertBefore(tela, velha); // a de baixo já está no lugar; a de cima sai
+    velha.classList.remove('anim-recua');
+    velha.classList.add(MODAIS.has(nomeVelho) ? 'anim-sai-modal' : 'anim-sai-empurra');
+    fimDaAnimacao(velha, 380).then(() => velha.remove());
+  } else {
+    velha?.remove();
+  }
+  // Leitor de tela: o foco vai para o título da tela nova (sem isso fica perdido na tela que saiu).
+  if (!primeiraTela && !tela.contains(document.activeElement)) tela.querySelector('h1')?.focus({ preventScroll: true });
+  primeiraTela = false;
+  ligarGestoDeVoltar(tela, nome);
   await execucao;
+  if (comAbas && rolagemPorAba.has(nome) && tela.scrollTop === 0) tela.scrollTop = rolagemPorAba.get(nome);
   ultimaAtualizacao = Date.now();
+}
+
+/**
+ * Deslizar da borda esquerda volta, nas telas empilhadas (o app instalado não tem o gesto do Safari).
+ * A tela acompanha o dedo; soltando depois de 35% da largura, volta.
+ */
+function ligarGestoDeVoltar(tela, nome) {
+  if (!nivelDe(nome) || MODAIS.has(nome)) return;
+  let x0 = null;
+  let dx = 0;
+  tela.addEventListener('touchstart', (e) => {
+    const t = e.touches[0];
+    x0 = t.clientX < 24 ? t.clientX : null;
+    dx = 0;
+  }, { passive: true });
+  tela.addEventListener('touchmove', (e) => {
+    if (x0 === null) return;
+    dx = Math.max(0, e.touches[0].clientX - x0);
+    tela.style.transition = 'none';
+    tela.style.transform = `translateX(${dx}px)`;
+  }, { passive: true });
+  tela.addEventListener('touchend', () => {
+    if (x0 === null) return;
+    x0 = null;
+    if (dx > tela.clientWidth * 0.35) {
+      voltar(); // a saída anima a partir de onde o dedo deixou a tela
+      return;
+    }
+    tela.style.transition = 'transform 260ms var(--empurra)';
+    tela.style.transform = '';
+    setTimeout(() => (tela.style.transition = ''), 280);
+  });
 }
 
 // Erros do próprio app vão para o registro do "Relatar um problema" (só a mensagem e onde, anonimizadas).
@@ -168,8 +270,11 @@ window.addEventListener('error', (e) => registrar('app', { erro: e.message, onde
 window.addEventListener('unhandledrejection', (e) => registrar('app', { erro: e.reason?.message ?? String(e.reason), onde: ondeNoCodigo(e.reason?.stack), tela: rotaAtual().nome }));
 
 // Ao voltar para o app: atualiza no máximo a cada 15 minutos (regra de respeito à Ufac).
+// Atualiza só os dados da tela atual, sem recriá-la (a rolagem e o que estava aberto continuam).
 document.addEventListener('visibilitychange', () => {
-  if (document.visibilityState === 'visible' && Date.now() - ultimaAtualizacao > 15 * 60 * 1000) renderizar();
+  if (document.visibilityState !== 'visible' || Date.now() - ultimaAtualizacao <= 15 * 60 * 1000) return;
+  ultimaAtualizacao = Date.now();
+  telaAtual?.dispatchEvent(new CustomEvent('atualizar', { detail: { forcar: false } }));
 });
 // Toque nas abas (<a href="#/...">) e o voltar do iPhone mudam o hash.
 window.addEventListener('hashchange', renderizar);
@@ -221,7 +326,7 @@ async function iniciar() {
   const retorno = await concluirRetornoDoGoogle().catch((e) => ({ erro: e }));
   await renderizar();
   if (retorno?.erro) avisar(retorno.erro.message);
-  else if (retorno?.ok) avisar('Classroom conectado.');
+  else if (retorno?.ok) avisar('Classroom conectado.', { ok: true });
   if (await loginConcluido()) {
     sincronizarAgenda().catch(() => {});
     atualizarSelo().catch(() => {});

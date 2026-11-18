@@ -2,16 +2,29 @@ import { ler } from '../lib/armazenamento.js';
 import { atualizarNotas } from '../lib/dados.js';
 import { LIMITE_FALTAS, situacaoApresentavel, situacaoFaltas, totalDaNota } from '../lib/dominio/academico.js';
 import { rotuloAtualizado } from '../lib/dominio/formatos.js';
-import { barraCompacta, botaoRedondo, cabecalho, esqueleto, html, montar, remontar, puxarParaAtualizar, vazio } from '../ui/componentes.js';
-import { avisoSemEticket, expirado, faixaExpirada, faixaFalha, fraseDeFalha } from './comum.js';
+import { barraCompacta, botaoRedondo, cabecalho, html, montar, notaRodape, remontar, puxarParaAtualizar, vazio } from '../ui/componentes.js';
+import { expirado, faixaExpirada, faixaFalha, fraseDeFalha } from './comum.js';
 
 function blocoFaltas(d) {
   const s = situacaoFaltas(d.faltas, { cargaHoraria: null, permitidasSemCarga: LIMITE_FALTAS });
   if (!s) return '';
   const largura = Math.min(100, (s.faltas / (s.permitidas + 1)) * 100);
   const texto = s.nivel === 'limite' ? `${s.faltas} faltas: passou do limite de ${s.permitidas}` : `${s.faltas} de ${s.permitidas} faltas permitidas`;
-  return html`<div style="margin-top:10px"><div class="linha"><span class="apoio cresce">${texto}</span>${s.nivel !== 'tranquilo' ? html`<span class="selo ${s.nivel === 'limite' ? 'perigo' : ''}">${s.nivel === 'limite' ? 'Reprova por falta' : 'Atenção'}</span>` : ''}</div>
-    <div class="barra-faltas ${s.nivel}" role="meter" aria-valuemin="0" aria-valuemax="${s.permitidas + 1}" aria-valuenow="${s.faltas}" aria-label="Faltas"><div style="width:${largura}%"></div></div></div>`;
+  return html`<div style="margin-top:10px"><div class="linha"><span class="apoio cresce">${texto}</span>${s.nivel !== 'tranquilo' ? html`<span class="selo ${s.nivel === 'limite' ? 'perigo' : ''}">${s.nivel === 'limite' ? 'Passou do limite' : 'Perto do limite'}</span>` : ''}</div>
+    <div class="barra-faltas ${s.nivel}" role="meter" aria-valuemin="0" aria-valuemax="${s.permitidas + 1}" aria-valuenow="${s.faltas}" aria-valuetext="${s.faltas} faltas de ${s.permitidas} permitidas" aria-label="Faltas"><div style="width:${largura}%"></div></div></div>`;
+}
+
+/** "(50.00%)" do portal vira "50%"; "(12,50%)" fica "12,5%". */
+const pesoCurto = (peso) => {
+  const p = String(peso).replace(/[()]/g, '').trim();
+  return p.includes('%') ? p.replace(/(\d+)[.,](\d*?)0*%/, (_, i, d) => (d ? `${i},${d}%` : `${i}%`)) : `(${p})`;
+};
+
+/** Esqueleto no formato de uma disciplina (nome, média à direita, barra de faltas): sem salto quando os dados chegam. */
+function esqueletoDisciplinas() {
+  return html`${[0, 1].map(() => html`<div class="cartao" aria-busy="true" aria-label="Carregando">
+    <div class="linha"><div class="cresce"><div class="esqueleto" style="height:18px;width:70%"></div><div class="esqueleto" style="height:12px;width:35%;margin-top:8px"></div></div><div class="esqueleto" style="height:28px;width:44px"></div></div>
+    <div class="esqueleto" style="height:8px;width:100%;margin-top:16px"></div></div>`)}`;
 }
 
 export default async function notas(tela, { ir, acoes }) {
@@ -22,27 +35,26 @@ export default async function notas(tela, { ir, acoes }) {
     const n = await ler('notas');
     remontar(tela.querySelector('.pilha'), html`
       ${cabecalho({ titulo: 'Notas', sub: n ? `${n.semestre} · ${rotuloAtualizado(n.lidoEm)}` : 'Semestre atual', acoes: botaoRedondo('menu', 'Menu', 'menu') })}
-      ${await avisoSemEticket()}
       ${(await expirado('portal')) ? faixaExpirada('portal') : ''}
       ${falha ? faixaFalha(falha) : ''}
       ${!n
-        ? html`<div class="cartao vidro">${carregando ? esqueleto(4) : vazio('notas', 'Ainda não li suas notas', 'Puxe para baixo para tentar de novo.')}</div>`
+        ? carregando ? esqueletoDisciplinas() : html`<div class="cartao">${vazio('notas', 'Ainda não li suas notas', 'Puxe para baixo para tentar de novo.')}</div>`
         : n.disciplinas.length === 0
-          ? html`<div class="cartao vidro">${vazio('notas', 'Nenhuma disciplina neste semestre')}</div>`
+          ? html`<div class="cartao">${vazio('notas', 'Nenhuma disciplina neste semestre')}</div>`
           : n.disciplinas.map((d, i) => html`
-            <section class="cartao vidro">
+            <section class="cartao">
               <button class="linha tocavel" style="width:100%;text-align:left" data-acao="abrir" data-valor="${i}" aria-expanded="${aberta === i}">
                 <div class="cresce"><div class="forte">${d.disciplina}</div><div class="apoio">${situacaoApresentavel(d.situacao)}</div></div>
-                <div style="text-align:right"><div class="rotulo">Média</div><div class="forte" style="font-size:20px">${d.media || '—'}</div></div>
+                <div style="text-align:right"><div class="rotulo">Média</div><div class="media-valor">${d.media || '—'}</div></div>
               </button>
               ${blocoFaltas(d)}
               ${aberta === i
-                ? html`<table class="tabela-notas">${d.notas.map((nota) => html`<tr><td>${nota.rotulo}${nota.peso ? html` <span class="apoio">(${nota.peso})</span>` : ''}</td><td>${totalDaNota(nota) || '—'}</td></tr>`)}
-                    ${d.resumo.map((r) => html`<tr><td>${r.rotulo}</td><td>${r.valor || '—'}</td></tr>`)}</table>
+                ? html`<table class="tabela-notas">${d.notas.map((nota) => html`<tr><td>${nota.rotulo}${nota.peso ? html` <span class="apoio">${pesoCurto(nota.peso)}</span>` : ''}</td><td>${totalDaNota(nota) || '—'}</td></tr>`)}
+                    ${d.resumo.map((r) => html`<tr class="${/m[ée]dia final/i.test(r.rotulo) ? 'final' : ''}"><td>${r.rotulo}</td><td>${r.valor || '—'}</td></tr>`)}</table>
                     ${!d.notas.length && !d.resumo.length ? html`<div class="apoio" style="margin-top:8px">O portal ainda não publicou o quadro de notas.</div>` : ''}`
                 : ''}
             </section>`)}
-      ${n ? html`<div class="apoio" style="text-align:center">Até ${LIMITE_FALTAS} faltas são permitidas; a ${LIMITE_FALTAS + 1}ª reprova.</div>` : ''}
+      ${n ? notaRodape(`Até ${LIMITE_FALTAS} faltas são permitidas; a ${LIMITE_FALTAS + 1}ª reprova.`) : ''}
     `);
   }
 
@@ -67,6 +79,7 @@ export default async function notas(tela, { ir, acoes }) {
     }
     await desenhar();
   }
+  tela.addEventListener('atualizar', atualizar);
   puxarParaAtualizar(tela, atualizar);
   if (!tem || Date.now() - new Date(tem.lidoEm).getTime() > 6 * 3600 * 1000) await atualizar();
 }

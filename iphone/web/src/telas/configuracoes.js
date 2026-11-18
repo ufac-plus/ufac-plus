@@ -4,21 +4,20 @@ import { classroomDisponivel, conectado as classroomConectado, desconectarClassr
 import { ANTECEDENCIA_MIN, ativarPush, instalado, lerPrefs, sincronizarAgenda, suportaPush } from '../lib/push.js';
 import { REFEICOES } from '../lib/dominio/refeicoes.js';
 import { formatarHoraMin } from '../lib/dominio/formatos.js';
-import { sair } from '../lib/sessao.js';
 import { definirLigado, esquecer as esquecerSenha, ligado as loginAutomaticoLigado, temSalvas } from '../lib/credenciais.js';
 import { aplicarAparencia } from '../main.js';
-import { avisar, botaoRedondo, cabecalho, confirmar, faixa, html, ic, item, montar, segmentos } from '../ui/componentes.js';
-import { escolherFoto, fotoOuIniciais } from './comum.js';
+import { avisar, botaoRedondo, cabecalho, cabecalhoSecao, confirmar, faixa, html, ic, item, marcarSegmento, montar, segmentos } from '../ui/componentes.js';
+import { confirmarSaida, escolherFoto, fotoOuIniciais } from './comum.js';
 import { iniciais } from '../lib/dominio/academico.js';
 
 const interruptor = (id, ligado, rotulo, sub = '') => html`
   <label class="item" style="cursor:pointer">
-    <span class="cresce"><span class="titulo">${rotulo}</span>${sub ? html`<span class="apoio" style="display:block">${sub}</span>` : ''}</span>
-    <input type="checkbox" class="interruptor" data-chave="${id}" ${ligado ? html`checked` : ''}>
+    <span class="cresce"><span class="titulo">${rotulo}</span>${sub ? html`<span class="apoio sub">${sub}</span>` : ''}</span>
+    <input type="checkbox" class="interruptor" role="switch" aria-label="${rotulo}" data-chave="${id}" ${ligado ? html`checked` : ''}>
   </label>`;
 
 /** Texto do relato: só versão, aparelho e tela. Nunca CPF, matrícula, QR, notas ou cookies. */
-export default async function configuracoes(tela, { voltar, ir, perfil, acoes }) {
+export default async function configuracoes(tela, { voltar, ir, perfil, acoes, parametro }) {
   async function desenhar() {
     const prefs = await lerPrefs();
     const temFoto = !!(await ler('foto'));
@@ -31,30 +30,26 @@ export default async function configuracoes(tela, { voltar, ir, perfil, acoes })
     montar(tela.querySelector('.pilha'), html`
       ${cabecalho({ titulo: 'Configurações', acoes: botaoRedondo('voltar', 'Voltar', 'voltar') })}
 
-      ${perfil !== 'professor' ? html`<section class="cartao vidro"><div class="linha">
+      ${perfil !== 'professor' ? html`<section class="cartao"><div class="linha">
         <div class="avatar">${await fotoOuIniciais(ident ? iniciais(ident.nome) : '')}</div>
         <div class="cresce"><div class="forte">Foto de perfil</div><div class="apoio">Fica só neste iPhone</div></div>
         <button class="botao claro tocavel" data-acao="foto">Trocar</button>
-      </div>${temFoto ? html`<button class="botao perigo largo tocavel" style="margin-top:12px;min-height:40px" data-acao="remover-foto">Remover foto</button>` : ''}</section>` : ''}
+      </div>${temFoto ? html`<button class="botao perigo largo pequeno tocavel" style="margin-top:12px" data-acao="remover-foto">Remover foto</button>` : ''}</section>` : ''}
 
-      <section class="cartao vidro"><h2>Aparência</h2>
-        ${segmentos([{ id: 'sistema', nome: 'Sistema' }, { id: 'claro', nome: 'Claro' }, { id: 'escuro', nome: 'Escuro' }], prefs.tema, 'tema')}
+      <section class="cartao"><h2>Aparência</h2>
+        ${segmentos([{ id: 'sistema', nome: 'Sistema' }, { id: 'claro', nome: 'Claro' }, { id: 'escuro', nome: 'Escuro' }], prefs.tema, 'tema', 'Aparência')}
       </section>
 
-      <section class="cartao vidro lista" style="padding:4px 0">
-        <div style="padding:10px 16px 0"><h2 style="margin:0">Login</h2></div>
+      <section class="cartao lista">
+        ${cabecalhoSecao('Login')}
         ${interruptor('loginAutomatico', sozinho, 'Entrar sozinho quando a sessão cair', senhaSalva ? 'CPF e senha cifrados só neste iPhone; só vão para a Ufac' : 'Vale depois de entrar uma vez com a chave ligada')}
         ${semEticket ? item({ icone: 'ru', titulo: 'Conectar o eTICKET do RU', sub: 'Você entrou só com o Portal. Conecte para ver saldo, QR e histórico.', acao: 'conectar-eticket' }) : ''}
         ${senhaSalva ? item({ icone: 'cadeado', titulo: 'Esquecer senha salva', sub: 'Apaga o CPF e as senhas deste iPhone', acao: 'esquecer-senha' }) : ''}
       </section>
 
-      <section class="cartao vidro lista" style="padding:4px 0">
-        <div style="padding:10px 16px 0"><h2 style="margin:0">Avisos</h2></div>
+      <section class="cartao lista" id="avisos">
+        ${cabecalhoSecao('Avisos e notificações', 'Lembretes no iPhone antes das aulas e das refeições.')}
         ${interruptor('feriados', prefs.feriados, 'Avisar sobre feriados', 'Na véspera, na tela Início')}
-      </section>
-
-      <section class="cartao vidro lista" style="padding:4px 0">
-        <div style="padding:10px 16px 0"><h2 style="margin:0">Notificações</h2><div class="apoio">No lugar das Live Activities, que não existem para apps da web.</div></div>
         ${!pushOk
           ? html`<div style="padding:12px 16px">${faixa({ icone: 'celular', titulo: 'Instale o app na Tela de Início', texto: 'O iPhone só manda notificações para apps instalados (iOS 16.4 ou mais novo).' })}<a class="botao claro largo tocavel" style="margin-top:10px" href="/instalar/">Como instalar</a></div>`
           : html`
@@ -64,7 +59,7 @@ export default async function configuracoes(tela, { voltar, ir, perfil, acoes })
             ${classroomDisponivel() ? interruptor('classroom', prefs.avisos.classroom, 'Atividades do Classroom', 'Às 19h, com o que vence até o dia seguinte') : ''}`}
       </section>
 
-      <section class="cartao vidro lista" style="padding:4px 0">
+      <section class="cartao lista">
         ${classroomConectado() ? item({ icone: 'quadro', titulo: 'Desconectar o Classroom', sub: 'Tira o acesso do app à sua conta do Google', acao: 'desconectar-classroom' }) : ''}
         ${item({ icone: 'info', titulo: 'Relatar um problema', sub: 'Manda os últimos erros do app, sem seus dados', acao: 'relatar' })}
         ${item({ icone: 'atualizar', titulo: 'Limpar dados salvos', sub: 'Lê tudo de novo da Ufac; não sai da conta', acao: 'limpar' })}
@@ -78,6 +73,8 @@ export default async function configuracoes(tela, { voltar, ir, perfil, acoes })
 
   montar(tela, html`<div class="pilha entra"></div>`);
   await desenhar();
+  // Vindo do sino da Início: abre já nos avisos.
+  if (parametro === 'avisos') tela.querySelector('#avisos')?.scrollIntoView({ block: 'start' });
 
   async function mudarPrefs(fn) {
     const p = await lerPrefs();
@@ -131,6 +128,7 @@ export default async function configuracoes(tela, { voltar, ir, perfil, acoes })
     desenhar();
   };
   acoes.tema = async (el) => {
+    marcarSegmento(el);
     await mudarPrefs((p) => (p.tema = el.dataset.valor));
     await aplicarAparencia();
     desenhar();
@@ -161,10 +159,5 @@ export default async function configuracoes(tela, { voltar, ir, perfil, acoes })
     avisar(revogado ? 'Classroom desconectado.' : 'Apaguei o acesso deste iPhone, mas o Google não respondeu. Para garantir: myaccount.google.com › Segurança › Apps de terceiros.');
     desenhar();
   };
-  acoes.sair = async () => {
-    const ok = await confirmar({ titulo: 'Sair da conta?', texto: 'Apaga a sessão, a senha salva, os dados salvos, o QR do RU e a foto deste iPhone.', sim: 'Sair', perigo: true });
-    if (!ok) return;
-    await sair();
-    ir('boas-vindas', { substituir: true });
-  };
+  acoes.sair = () => confirmarSaida(ir);
 }

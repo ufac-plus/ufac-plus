@@ -5,12 +5,11 @@ import { atualizarClassroom, classroomDisponivel, conectado, conectar, ErroClass
 import { iniciais, primeiroNome, proximaAula, semestreCurto } from '../lib/dominio/academico.js';
 import { atividadesDaSemana } from '../lib/dominio/classroom.js';
 import { avisoFeriado } from '../lib/dominio/feriados.js';
-import { formatarData, formatarHoraMin, formatarMoeda, formatarPrazoCurto, rotuloAtualizado } from '../lib/dominio/formatos.js';
+import { formatarData, formatarHoraMin, formatarPrazoCurto, rotuloAtualizado } from '../lib/dominio/formatos.js';
 import { cardapioValeEm, itensDoCardapio, proximaRefeicao } from '../lib/dominio/refeicoes.js';
 import { atualizarSelo, lerPrefs, sincronizarAgenda } from '../lib/push.js';
-import { URL_RECARGA } from '../lib/config.js';
-import { avisar, barraCompacta, botaoRedondo, cabecalho, esqueleto, faixa, html, ic, montar, puxarParaAtualizar, remontar, vazio } from '../ui/componentes.js';
-import { avisoSemEticket, escolherFoto, expirado, semEticket, faixaExpirada, faixaFalha, fotoOuIniciais, fraseDeFalha } from './comum.js';
+import { abreFora, avisar, barraCompacta, botaoRedondo, cabecalho, esqueleto, faixa, html, ic, montar, puxarParaAtualizar, remontar, vazio, vibrarLeve } from '../ui/componentes.js';
+import { cartaoSaldo, escolherFoto, expirado, semEticket, faixaExpirada, faixaFalha, fotoOuIniciais, fraseDeFalha, soletrar } from './comum.js';
 import { abrirQr } from './qr.js';
 
 export default async function inicio(tela, { ir, acoes }) {
@@ -40,84 +39,80 @@ export default async function inicio(tela, { ir, acoes }) {
     const nome = ident?.nome ?? '';
     const semRu = await semEticket();
 
+    const vencidos = [];
+    if (await expirado('portal')) vencidos.push('portal');
+    if (await expirado('eticket')) vencidos.push('eticket');
+
     remontar(tela.querySelector('.pilha'), html`
       ${cabecalho({
         sobre: formatarData(agora),
         titulo: nome ? `Olá, ${primeiroNome(nome)}` : 'Olá',
-        acoes: html`${botaoRedondo('sino', 'Avisos', 'avisos')}${botaoRedondo('menu', 'Menu', 'menu')}`,
+        acoes: html`${botaoRedondo('sino', 'Avisos e notificações', 'avisos')}${botaoRedondo('menu', 'Menu', 'menu')}`,
       })}
-      ${feriado ? faixa({ icone: 'calendario', titulo: feriado.titulo, texto: feriado.texto }) : ''}
-      ${await avisoSemEticket()}
-      ${(await expirado('eticket')) ? faixaExpirada('eticket') : ''}
-      ${(await expirado('portal')) ? faixaExpirada('portal') : ''}
+      ${vencidos.length ? faixaExpirada(vencidos) : ''}
+      ${feriado ? faixa({ icone: 'calendario', titulo: feriado.titulo, texto: feriado.texto, compacta: true }) : ''}
       ${await falhaVisivel()}
 
-      <section class="cartao vidro" aria-label="Identificação">
+      <section class="cartao" aria-label="Identificação">
         ${ident
           ? html`
             <div class="linha">
               <button class="avatar tocavel" data-acao="foto" aria-label="Trocar foto">${await fotoOuIniciais(iniciais(nome))}</button>
-              <div class="cresce"><div class="forte" style="font-size:17px">${nome}</div><div class="apoio">${ident.curso} · Ufac</div></div>
+              <div class="cresce"><div class="titulo-item">${nome}</div><div class="apoio">${ident.curso} · Ufac</div></div>
             </div>
             <div class="grade3">
-              <button class="copiavel tocavel" data-acao="copiar-matricula" aria-label="Matrícula ${ident.matricula}. Toque para copiar"><div class="rotulo">Matrícula ${ic('copiar')}</div><div class="valor">${ident.matricula}</div></button>
+              <button class="copiavel tocavel" data-acao="copiar-matricula" aria-label="Matrícula ${soletrar(ident.matricula)}. Toque para copiar"><div class="rotulo">Matrícula ${ic('copiar')}</div><div class="valor">${ident.matricula}</div></button>
               <div><div class="rotulo">Período</div><div class="valor">${ident.periodo}º</div></div>
               <div><div class="rotulo">Semestre</div><div class="valor">${semestreCurto(ident.semestre)}</div></div>
             </div>`
           : carregando
             ? esqueleto(3)
             : diagnostico
-              ? html`${vazio('pessoa', 'O Portal abriu uma página que o app ainda não conhece')}<button class="botao largo claro tocavel" data-acao="relatar">Enviar diagnóstico</button><div class="apoio" style="margin-top:8px;text-align:center">Vai sem nome, CPF nem matrícula. Você revisa antes de enviar.</div>`
+              ? html`${vazio('pessoa', 'O Portal abriu uma página que o app ainda não conhece')}<button class="botao largo claro tocavel" data-acao="relatar">Enviar diagnóstico</button><div class="nota-rodape" style="margin-top:8px">Vai sem nome, CPF nem matrícula. Você revisa antes de enviar.</div>`
               : html`${vazio('pessoa', 'Ainda não li seus dados do Portal')}<button class="botao largo claro tocavel" data-acao="entrar-portal">Entrar no Portal</button>`}
       </section>
 
-      <section class="cartao vidro tingido" aria-label="RU">
-        <div class="rotulo">Saldo no RU</div>
-        ${semRu
-          ? html`<div class="saldo">—</div><div class="apoio">eTICKET não conectado</div>`
-          : ru ? html`<div class="saldo">${formatarMoeda(ru.saldo)}</div><div class="apoio">${rotuloAtualizado(ru.lidoEm, agora)}</div>` : carregando ? html`<div class="esqueleto" style="height:44px;width:55%;margin:8px 0;opacity:.4"></div>` : html`<div class="saldo">—</div>`}
-        <div class="par-botoes">
-          ${semRu
-            ? html`<button class="botao acento tocavel" data-acao="conectar-eticket">${ic('ru')} Conectar o eTICKET</button>`
-            : html`<button class="botao acento tocavel" data-acao="qr">${ic('qr')} Mostrar QR</button>`}
-          ${semRu ? '' : html`<a class="botao contorno tocavel" href="${URL_RECARGA}" target="_blank" rel="noopener">${ic('mais')} Recarregar</a>`}
-        </div>
-      </section>
+      ${cartaoSaldo({ ru, semRu, carregando, agora })}
 
-      <section class="cartao vidro" aria-label="Próxima aula">
-        <div class="rotulo" style="margin-bottom:6px">Próxima aula</div>
+      <section class="cartao" aria-labelledby="rotulo-aula">
+        <h2 class="rotulo" id="rotulo-aula" style="margin-bottom:6px">Próxima aula</h2>
         ${aula
-          ? html`<span class="selo">${aula.rotulo}</span><div class="forte" style="font-size:17px;margin-top:8px">${aula.aula.disciplina}</div><div class="apoio">${formatarHoraMin(aula.aula.inicioMin)} – ${formatarHoraMin(aula.aula.fimMin)}</div>`
+          ? html`<span class="selo">${aula.rotulo}</span><div class="titulo-item" style="margin-top:8px">${aula.aula.disciplina}</div><div class="apoio">${formatarHoraMin(aula.aula.inicioMin)} – ${formatarHoraMin(aula.aula.fimMin)}</div>`
           : horarios
             ? vazio('horarios', 'Sem aula nos próximos dias')
             : esqueleto(2)}
       </section>
 
-      <button class="cartao vidro item tocavel" style="padding:14px 16px" data-acao="refeicao">
+      <button class="cartao item tocavel" data-acao="refeicao">
         <span class="icone verde">${ic('ru')}</span>
         <span class="cresce">
-          <span class="titulo">Próxima refeição · ${refeicao.nome} · ${formatarHoraMin(refeicao.inicioMin)}</span>
-          <span class="apoio" style="display:block">${itens.length ? itens.join(', ') : `O cardápio do ${refeicao.minusculo} ainda não saiu`}</span>
+          <span class="rotulo" style="display:block">Próxima refeição</span>
+          <span class="titulo" style="display:block">${refeicao.nome} · ${formatarHoraMin(refeicao.inicioMin)}</span>
+          <span class="apoio sub">${itens.length ? itens.join(', ') : `O cardápio do ${refeicao.minusculo} ainda não saiu`}</span>
         </span>
         <span class="seta">${ic('seta')}</span>
       </button>
 
       ${classroomDisponivel()
-        ? html`<section class="cartao vidro" aria-label="Classroom">
-            <div class="linha" style="margin-bottom:6px"><div class="rotulo cresce">Atividades da semana · Classroom</div>${classroom ? html`<span class="apoio">${rotuloAtualizado(classroom.lidoEm, agora)}</span>` : ''}</div>
+        ? html`<section class="cartao" aria-labelledby="rotulo-classroom">
+            <div class="linha" style="margin-bottom:6px;align-items:baseline">
+              <div class="cresce"><h2 class="titulo-cartao" id="rotulo-classroom" style="margin:0">Classroom</h2><div class="apoio">Atividades da semana</div></div>
+              ${classroom ? html`<span class="apoio">${rotuloAtualizado(classroom.lidoEm, agora)}</span>` : ''}
+            </div>
             ${atividades.length
               ? html`<div class="lista" style="margin:0 -16px">${atividades.slice(0, 5).map((a) => html`
                   <a class="item tocavel" href="${a.link ?? 'https://classroom.google.com/'}" target="_blank" rel="noopener">
                     <span class="icone ${a.situacao === 'atrasada' ? 'perigo' : ''}">${ic('quadro')}</span>
-                    <span class="cresce"><span class="titulo">${a.titulo}</span><span class="apoio" style="display:block">${a.situacao === 'atrasada' ? 'Atrasada · ' : ''}${formatarPrazoCurto(new Date(a.prazo), agora)}${a.turma ? ` · ${a.turma}` : ''}</span></span>
+                    <span class="cresce"><span class="titulo">${a.titulo}</span><span class="apoio sub">${a.situacao === 'atrasada' ? 'Atrasada · ' : ''}${formatarPrazoCurto(new Date(a.prazo), agora)}${a.turma ? ` · ${a.turma}` : ''}</span></span>
+                    ${abreFora}
                   </a>`)}</div>`
               : classroom
                 ? vazio('check', 'Nada para entregar nesta semana')
                 : vazio('quadro', 'Veja aqui o que vence no Classroom', 'Só leitura: o app não entrega nem altera nada.')}
             ${conectado()
-              ? html`<a class="botao largo claro tocavel" style="margin-top:8px" href="https://classroom.google.com/" target="_blank" rel="noopener">${ic('abrir')} Abrir o Classroom</a>`
-              : html`<button class="botao largo claro tocavel" style="margin-top:8px" data-acao="classroom">${ic('quadro')} ${classroom ? 'Conectar de novo com o Google' : 'Conectar Classroom'}</button>
-                <div class="apoio" style="margin-top:6px;text-align:center">Use a conta @sou.ufac.br. Você autoriza uma vez; o app só lê.</div>`}
+              ? html`<a class="botao largo claro tocavel" style="margin-top:8px" href="https://classroom.google.com/" target="_blank" rel="noopener">${ic('abrir')} Abrir o Classroom${abreFora}</a>`
+              : html`<button class="botao largo claro tocavel" style="margin-top:8px" data-acao="classroom">${ic('quadro')} ${classroom ? 'Conectar o Classroom de novo' : 'Conectar o Classroom'}</button>
+                <div class="nota-rodape" style="margin-top:6px">Use a conta @sou.ufac.br. Você autoriza uma vez; o app só lê.</div>`}
           </section>`
         : ''}
     `);
@@ -172,19 +167,20 @@ export default async function inicio(tela, { ir, acoes }) {
   }
 
   acoes.menu = () => ir('menu');
-  acoes.avisos = () => ir('configuracoes');
+  acoes.avisos = () => ir('configuracoes/avisos');
   acoes.qr = () => abrirQr();
   acoes.refeicao = () => ir(`ru/${proximaRefeicao(new Date()).id}`);
   acoes['entrar-eticket'] = () => ir('login/eticket');
   acoes['entrar-portal'] = () => ir('login/portal');
+  acoes['entrar-ambos'] = () => ir('login/ambos');
   acoes['copiar-matricula'] = async (el) => {
     // Lê o número da própria tela, sem esperar o banco: o Safari só deixa copiar dentro do toque.
     const matricula = el.querySelector('.valor')?.textContent.trim();
     if (!matricula) return;
     try {
       await navigator.clipboard.writeText(matricula);
-      navigator.vibrate?.(10);
-      avisar('Matrícula copiada');
+      vibrarLeve();
+      avisar('Matrícula copiada', { ok: true });
     } catch {
       avisar('Não consegui copiar agora.');
     }
@@ -202,6 +198,7 @@ export default async function inicio(tela, { ir, acoes }) {
     }
   };
   tela.addEventListener('sessao', desenhar);
+  tela.addEventListener('atualizar', (e) => atualizar({ forcar: !!e.detail?.forcar }));
   puxarParaAtualizar(tela, () => atualizar({ forcar: true }));
   await atualizar();
 }
