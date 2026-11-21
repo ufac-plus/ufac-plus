@@ -101,3 +101,72 @@ export const situacaoApresentavel = (s) => (s === 'Matrícula' ? 'Cursando' : s)
 
 /** O total de uma coluna "Nota 1" é o último item. */
 export const totalDaNota = (nota) => (nota.itens.length ? nota.itens[nota.itens.length - 1].valor : '');
+
+/** "6,50", "6.5" ou 7 viram número; vazio, "—" e texto, null. */
+export function lerNumero(valor) {
+  if (typeof valor === 'number') return Number.isFinite(valor) ? valor : null;
+  const t = String(valor ?? '').trim();
+  return /^\d+([.,]\d+)?$/.test(t) ? Number(t.replace(',', '.')) : null;
+}
+
+export const formatarNota = (n, casas = 1) => n.toFixed(casas).replace('.', ',');
+
+/**
+ * Regimento Geral da Ufac (Res. CONSU 33/2011, alterada pelas 43/2011 e 50/2013): com média parcial (MP) 8 ou
+ * mais passa sem exame (art. 316); MP zero não tem exame (art. 317); MF = (MP + EF) ÷ 2 (art. 319) e reprova
+ * com MF abaixo de 5 (art. 320, III). Logo EF = 10 − MP, arredondado para cima na 1ª casa (art. 305), para nunca faltar.
+ */
+export function notaNecessariaNoExame(mp) {
+  if (typeof mp !== 'number' || !(mp > 0 && mp < 8)) return null;
+  return Math.ceil((10 - mp) * 10 - 1e-9) / 10;
+}
+
+const doResumo = (d, rotulo) => d.resumo?.find((r) => r.rotulo.trim().toLowerCase() === rotulo)?.valor ?? '';
+
+/**
+ * Nota mínima no exame, só no semestre atual e só enquanto o portal não lançou exame nem média final (o que ele
+ * disser vale mais). Exige todas as notas lançadas (senão a MP ainda vai mudar) e as faltas dentro do limite
+ * (art. 317), conhecido pela carga horária. Null quando não se aplica.
+ */
+export function exameDaDisciplina(d, { atual }) {
+  if (!atual || !d?.notas?.length) return null;
+  if (d.notas.some((n) => lerNumero(totalDaNota(n)) == null)) return null;
+  if (lerNumero(doResumo(d, 'exame')) != null || lerNumero(doResumo(d, 'média final')) != null || lerNumero(d.media) != null) return null;
+  const faltas = situacaoFaltas(d.faltas, { cargaHoraria: d.cargaHoraria });
+  if (faltas?.nivel === 'limite') return null;
+  // Sem a carga horária o limite é estimativa (o de 60 h): com alguma falta, pode já ter passado do limite real.
+  if (faltas?.estimado && faltas.faltas > 0) return null;
+  const mediaParcial = lerNumero(doResumo(d, 'média'));
+  const necessaria = notaNecessariaNoExame(mediaParcial);
+  return necessaria == null ? null : { mediaParcial, necessaria };
+}
+
+/**
+ * Média das médias finais dos semestres em cache, ponderada pela carga horária quando todas a têm. Conta do app,
+ * não o CR: a Ufac não publica a fórmula do CR (o valor oficial sai no relatório "Histórico Escolar CR – Aprovados").
+ */
+export function mediaDasDisciplinas(semestres) {
+  let soma = 0;
+  let pesos = 0;
+  let simples = 0;
+  let n = 0;
+  let semCarga = false;
+  let comNota = 0;
+  for (const s of semestres ?? []) {
+    let contou = false;
+    for (const d of s?.disciplinas ?? []) {
+      const mf = lerNumero(d.media);
+      if (mf == null) continue;
+      const carga = Number(d.cargaHoraria) > 0 ? Number(d.cargaHoraria) : null;
+      if (carga == null) semCarga = true;
+      soma += mf * (carga ?? 0);
+      pesos += carga ?? 0;
+      simples += mf;
+      n++;
+      contou = true;
+    }
+    if (contou) comNota++;
+  }
+  if (!n) return null;
+  return { media: semCarga ? simples / n : soma / pesos, disciplinas: n, semestres: comNota, ponderada: !semCarga };
+}

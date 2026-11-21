@@ -55,3 +55,84 @@ em 11/11 abriram na conta do Arthur. Renovar livro é ação que muda dado: só 
 - Conseguir a tabela oficial (RBTrans / Prefeitura de Rio Branco ou as empresas das linhas) e a data dela.
 - Saber qual parada fica dentro do campus e se os horários são de saída do terminal ou de passagem no campus.
 - Definir quem atualiza a tabela quando ela mudar (a cada mudança, nova versão do app).
+
+**Atualização da pesquisa de 21/11/2026 (continua fora do app):**
+- O único documento oficial achado é o "Projeto Operacional Preliminar – POP" da Prefeitura/RBTrans, de 20/05/2026
+  (https://www.riobranco.ac.gov.br/wp-content/uploads/2026/06/04-POP-Plano-Operacional.docx). Ele lista as linhas do
+  novo SITURB que passam na Ufac (501 UFAC, 501-1 UFAC Domingo, 502 Universitário, 901 UFAC/Rodoviária, 902
+  IFAC/Universidades e 902-1), com itinerário, frota e número de viagens por dia, mas **sem quadro de horários de
+  partida**, e avisa que a programação pode mudar nos primeiros 30 dias.
+- A operação mudou de empresa em outubro de 2026 (JTP). Os horários que aparecem na web vêm do Moovit: não são
+  oficiais e provavelmente são da rede antiga. **Não usar.**
+- Só voltar ao assunto com a tabela oficial, com data.
+
+## 3. Onde fica o bloco (Mapa do Campus)
+
+**Já no app (21/11/2026):** atalho "Mapa do campus" no Menu, que abre o mapa oficial (https://sistemas.ufac.br/mapa/)
+no Safari. Nada é lido pelo app.
+
+**O que já se sabe:**
+- O mapa tem uma API JSON pública: `GET https://sistemas.ufac.br/mapa/api/locais/` devolve `{ total, locais[] }`
+  (141 locais em 21/11/2026: 114 no campus SEDE e 27 no FLORESTA), com `codigo` (ex.: D02), `titulo`, `subtitulo`
+  (setor), `setores_internos`, `descricao`, `horario`, `categoria`, `acessibilidade`, `total_salas`, `latitude`,
+  `longitude` e `foto_url`. Há também `/mapa/api/busca/?q=` (fragmentos HTML) e `/mapa/api/rotas/`.
+- **Sem CORS:** o iPhone não lê direto. Seria preciso o Worker (hoje ele só aceita `/eticket` em sistemas.ufac.br) ou
+  um retrato embutido no app, com a data.
+- **Cuidado:** existe `/mapa/api/telemetria/destino/`. O app nunca deve chamar esse endereço.
+
+**Como seria no app:** busca por bloco ou setor dentro do app, com o horário de funcionamento que a própria Ufac
+informa e o botão "Abrir no Mapas". Liberar no Worker só o GET de `/mapa/api/locais/`, com cache de um dia.
+
+**O que falta:** decidir entre Worker e retrato embutido; conferir se os campos `horario` estão preenchidos e
+atualizados; fixture anonimizada (a lista é pública) e teste.
+
+## 4. Sala da turma por semestre
+
+**O que é:** mostrar em que bloco e sala cada turma tem aula (o Portal não informa a sala).
+
+**O que já se sabe:** o NURCA publica a "Distribuição do Espaço Físico Acadêmico por Bloco" por semestre, em PDF, com
+curso, período e turno por bloco e sala (inclui Direito). Versão de 2026.2:
+https://www.ufac.br/site/academico/calendario-academico/espaco_fisico_dos_cursos_de_graduacao___2026-2.pdf
+
+**O que falta:** é PDF, então só daria uma tabela digitada à mão e conferida, sempre com "conforme NURCA, 2026.2", e
+refeita a cada semestre. Falta decidir quem digita e confere, e como ligar a linha do PDF (curso, período, turno) à
+turma do Portal sem inventar o vínculo.
+
+## 5. Calendário acadêmico oficial da graduação
+
+**O que é:** datas do semestre (início e fim das aulas, prazos de matrícula, trancamento, exames) no lugar do Google
+Agenda do Portal, parado em 2022.
+
+**O que já se sabe:** a fonte oficial é o PDF "Calendário Acadêmico 2026-2027 - Cursos de Graduação"
+(https://www.ufac.br/site/academico/calendario-academico/calendarios-academicos-antigos/calendario-academico-2026-2027-cursos-de-graduacao.pdf),
+e o NURCA já reprogramou 2026.1 uma vez
+(https://www.ufac.br/site/academico/calendario-academico/calendarios-academicos-antigos/calendario-academico-2026-1_reprogramacao.pdf).
+
+**O que falta:** é PDF, então seria uma lista de datas digitada à mão, conferida e com a fonte, sempre da versão mais
+recente (as reprogramações invalidam a anterior). Sem essa conferência, não entra no app.
+
+## 6. Editais da Proaes e da Prograd
+
+**Já no app (21/11/2026):** Menu › Editais. Lista os editais do ano (título, data de publicação e de atualização) das
+duas pró-reitorias e abre cada um no Safari. Lê direto do site da Ufac (`www3.ufac.br/<setor>/@search`, API pública do
+Plone, com CORS aberto), sem o Worker e sem cookies, só ao abrir a tela ou puxar para atualizar, com cache de 6 horas.
+No começo do ano, enquanto a pasta nova está vazia, mostra os do ano anterior.
+
+**Depois:** avisar quando sair edital novo (precisaria de leitura em segundo plano: só pelo Worker, uma vez por dia);
+há editais da Proaes também em `www.ufac.br/proaes`, que não entram na lista estruturada.
+
+## Notas: "quanto preciso no exame" e CR oficial
+
+**Já no app (21/11/2026):** ao abrir o quadro de uma disciplina do semestre atual, com as notas lançadas, média
+parcial (MP) acima de 0 e abaixo de 8, exame e média final ainda em branco e faltas dentro do limite, o cartão mostra a
+nota mínima no exame (EF = 10 − MP, arredondada para cima na 1ª casa), citando o Regimento Geral da Ufac (Res. CONSU
+33/2011, alterada pelas 43/2011 e 50/2013), arts. 305, 316, 317, 319 e 320. O que o portal lançar (Exame e Média Final)
+sempre vale mais. Na folha de semestres há a "Média das disciplinas" dos semestres já abertos no app (ponderada pela
+carga horária quando todas a têm), com o aviso de que é uma conta do app, não o CR.
+
+**CR oficial (fica de fora):** o Regimento não traz "coeficiente", "CR" nem "IRA", e nenhuma resolução publicada traz a
+fórmula. O CR é calculado pelo SIE e sai no relatório "Histórico Escolar CR – Aprovados". Só entra no app se um
+extrator conseguir ler o valor desse relatório (é PDF) ou se a Ufac publicar a fórmula.
+
+**Lacuna:** o Regimento não diz se a MF de quem passa direto (MP ≥ 8) é a própria MP. O app não calcula isso: mostra a
+Média Final do portal.

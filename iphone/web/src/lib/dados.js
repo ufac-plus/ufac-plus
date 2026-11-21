@@ -4,7 +4,7 @@ import { enderecoDaUltimaPagina, lerPagina, marcarExpirado, pedir, tentarReentra
 import { apagar, gravar, ler } from './armazenamento.js';
 import { caminhos } from './config.js';
 import { lerEticketCardapio, lerEticketInicio, lerHistoricoRecargas, lerHistoricoRefeicoes } from './extratores/eticket.js';
-import { diagnosticoPagina, lerCargaHoraria, lerEnderecoComunicacoes, lerEnderecoMaisRelatorios, lerHorarios, lerIdentificacao, lerIdInterno, lerListaDeNotas, lerNotasDaDisciplina } from './extratores/portal.js';
+import { diagnosticoPagina, lerCargaHoraria, lerEnderecoComunicacoes, lerEnderecoMaisRelatorios, lerHorarios, lerIdentificacao, lerIdInterno, lerNotasDaDisciplina, lerSemestresDeNotas } from './extratores/portal.js';
 import { lerAulasDoMes, lerDetalheTurma, lerMesesAgenda, lerNomeProfessor, lerTurmasProfessor } from './extratores/professor.js';
 import { registrar, semParametros } from './registro.js';
 import { cardapioPendente, cardapioValeEm, itensDoCardapio } from './dominio/refeicoes.js';
@@ -135,17 +135,40 @@ const caminhoNoWorker = (url) => {
   return u.pathname + u.search;
 };
 
-export async function atualizarNotas() {
-  const id = await idInterno();
-  if (!id) return null;
-  const html = await lerPagina('portal', caminhos.notas(id));
-  if (html === null) return null;
-  const lista = lerListaDeNotas(html);
-  if (!lista) throw falhaDeLeitura('Não consegui ler suas notas no Portal.', 'notas', html);
-  const anteriores = (await ler('notas'))?.disciplinas ?? [];
+// ---------- Notas por semestre ----------
+// Tudo fica na chave 'notas': semestre/disciplinas/lidoEm são o semestre atual (como sempre foi, e é o que
+// as outras telas leem); `semestres` é a lista da página (com os endereços de cada disciplina) e
+// `anteriores` guarda, por nome, os semestres já encerrados que a pessoa abriu.
+
+const VALIDADE_ATUAL = 6 * 3600 * 1000;
+
+/** Semestres para o seletor, o mais recente primeiro. Cache antigo (sem a lista) tem só o atual. */
+export function listaDeSemestres(cache) {
+  if (!cache?.semestre) return [];
+  const nomes = cache.semestres?.length ? cache.semestres.map((s) => s.semestre) : [cache.semestre];
+  return nomes.map((semestre) => ({ semestre, atual: semestre === cache.semestre }));
+}
+
+/** O semestre escolhido, do cache (null = o atual). Null se ainda não foi lido. */
+export function semestreEmCache(cache, nome) {
+  if (!cache?.semestre) return null;
+  if (!nome || nome === cache.semestre) return { semestre: cache.semestre, disciplinas: cache.disciplinas, lidoEm: cache.lidoEm, atual: true };
+  const s = cache.anteriores?.[nome];
+  return s ? { ...s, atual: false } : null;
+}
+
+/** O atual relê com mais de 6 h; um semestre encerrado não muda, então só é lido se nunca foi. */
+export function precisaLer(cache, nome, agora = Date.now()) {
+  const s = semestreEmCache(cache, nome);
+  if (!s) return true;
+  if (!s.atual) return false;
+  return !s.lidoEm || agora - new Date(s.lidoEm).getTime() > VALIDADE_ATUAL;
+}
+
+/** Quadro e carga horária de cada disciplina, uma por vez para não sobrecarregar o portal. Null se a sessão caiu. */
+async function lerDisciplinas(lista, anteriores = []) {
   const disciplinas = [];
-  // Uma por vez, para não sobrecarregar o portal.
-  for (const d of lista.disciplinas) {
+  for (const d of lista) {
     let n = { disciplina: d.disciplina, situacao: d.situacao, notas: [], resumo: [], media: '', faltas: '', cargaHoraria: null };
     if (d.urlNotas) {
       const pagina = await lerPagina('portal', caminhoNoWorker(d.urlNotas), { xhr: true });
@@ -160,9 +183,56 @@ export async function atualizarNotas() {
     }
     disciplinas.push(n);
   }
-  const notas = { semestre: lista.semestre, disciplinas, lidoEm: agoraISO() };
-  await gravar('notas', notas);
-  return notas;
+  return disciplinas;
+}
+
+// O atual e um anterior podem ser lidos ao mesmo tempo: cada um lê e grava "notas" na sua vez,
+// senão a gravação de um sobrescreve a do outro com a versão antiga.
+let filaNotas = Promise.resolve();
+function mudarNotas(mudar) {
+  const vez = filaNotas.then(async () => {
+    const novo = mudar(await ler('notas'));
+    await gravar('notas', novo);
+    return novo;
+  });
+  filaNotas = vez.catch(() => {});
+  return vez;
+}
+
+/** Semestre atual. A lista dos semestres anteriores vem desta mesma página, sem pedido a mais. */
+export async function atualizarNotas() {
+  const id = await idInterno();
+  if (!id) return null;
+  const html = await lerPagina('portal', caminhos.notas(id));
+  if (html === null) return null;
+  const semestres = lerSemestresDeNotas(html);
+  if (!semestres) throw falhaDeLeitura('Não consegui ler suas notas no Portal.', 'notas', html);
+  const [lista] = semestres;
+  const salvo = await ler('notas');
+  const disciplinas = await lerDisciplinas(lista.disciplinas, salvo?.disciplinas ?? []);
+  if (!disciplinas) return null;
+  return mudarNotas((agora) => {
+    // Pode ter ganhado um semestre anterior enquanto este era lido.
+    const anteriores = { ...(agora?.anteriores ?? {}) };
+    delete anteriores[lista.semestre];
+    return { semestre: lista.semestre, disciplinas, lidoEm: agoraISO(), semestres, anteriores };
+  });
+}
+
+/** Um semestre já encerrado, só quando a pessoa o escolhe (ou puxa para atualizar nele). */
+export async function atualizarSemestre(nome) {
+  const salvo = await ler('notas');
+  if (!salvo || nome === salvo.semestre) return atualizarNotas().then((n) => n && semestreEmCache(n, null));
+  const lista = salvo.semestres?.find((s) => s.semestre === nome);
+  if (!lista) throw new ErroLeitura(`Não encontrei o ${nome} no Portal.`);
+  const disciplinas = await lerDisciplinas(lista.disciplinas, salvo.anteriores?.[nome]?.disciplinas ?? []);
+  if (!disciplinas) return null;
+  const s = { semestre: nome, disciplinas, lidoEm: agoraISO() };
+  await mudarNotas((agora) => {
+    const base = agora ?? salvo;
+    return { ...base, anteriores: { ...(base.anteriores ?? {}), [nome]: s } };
+  });
+  return { ...s, atual: false };
 }
 
 /** PDF de um relatório, como Blob. Null se a sessão do portal caiu. */

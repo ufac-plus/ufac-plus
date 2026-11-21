@@ -39,6 +39,7 @@ const TELAS = {
   configuracoes: () => import('./telas/configuracoes.js'),
   historico: () => import('./telas/historico.js'),
   biblioteca: () => import('./telas/biblioteca.js'),
+  editais: () => import('./telas/editais.js'),
   relatar: () => import('./telas/relatar.js'),
   creditos: () => import('./telas/creditos.js'),
 };
@@ -75,7 +76,7 @@ export function ir(rota, { substituir = false } = {}) {
 export const voltar = () => (history.length > 1 ? history.back() : ir('inicio'));
 
 // Profundidade de cada tela fora das abas: maior = mais "para dentro". Define a direção da transição.
-const NIVEL = { menu: 1, historico: 1, biblioteca: 1, turma: 1, configuracoes: 2, relatar: 3, creditos: 3 };
+const NIVEL = { menu: 1, historico: 1, biblioteca: 1, editais: 1, turma: 1, configuracoes: 2, relatar: 3, creditos: 3 };
 const MODAIS = new Set(['menu']); // sobem de baixo (têm X); as outras entram da direita (têm ‹)
 const nivelDe = (nome) => NIVEL[nome] ?? 0;
 const rolagemPorAba = new Map(); // a aba guarda onde estava ao voltar para ela

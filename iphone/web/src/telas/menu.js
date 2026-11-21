@@ -3,6 +3,9 @@ import { oficial, URL_PORTAL_ALUNO, URL_PORTAL_PROFESSOR } from '../lib/config.j
 import { abreFora, botaoRedondo, cabecalho, html, ic, montar, notaRodape } from '../ui/componentes.js';
 import { confirmarSaida } from './comum.js';
 
+// Mapa oficial do campus (NTI da Ufac): blocos, setores e horários de cada prédio, informados pela própria Ufac.
+const URL_MAPA_CAMPUS = 'https://sistemas.ufac.br/mapa/';
+
 const atalho = (icone, nome, href) =>
   href ? html`<a class="cartao tocavel atalho" href="${href}" target="_blank" rel="noopener"><span class="item" style="padding:0;min-height:0"><span class="icone">${ic(icone)}</span></span><span class="forte">${nome}</span>${abreFora}</a>` : '';
 
@@ -13,6 +16,8 @@ export default async function menu(tela, { voltar, ir, perfil, acoes }) {
   montar(tela, html`<div class="pilha entra">
     ${cabecalho({ titulo: 'Menu', acoes: botaoRedondo('fechar', 'Fechar', 'voltar') })}
     ${!professor ? html`<button class="cartao item tocavel" data-acao="biblioteca"><span class="icone">${ic('livro')}</span><span class="cresce"><span class="titulo">Biblioteca</span><span class="apoio sub">Pesquisar no acervo</span></span><span class="seta">${ic('seta')}</span></button>` : ''}
+    ${!professor ? html`<button class="cartao item tocavel" data-acao="editais"><span class="icone">${ic('megafone')}</span><span class="cresce"><span class="titulo">Editais</span><span class="apoio sub">Bolsas e auxílios (Proaes) e Prograd</span></span><span class="seta">${ic('seta')}</span></button>` : ''}
+    <a class="cartao item tocavel" href="${URL_MAPA_CAMPUS}" target="_blank" rel="noopener"><span class="icone">${ic('globo')}</span><span class="cresce"><span class="titulo">Mapa do campus</span><span class="apoio sub">Blocos e setores · site oficial da Ufac</span></span><span class="seta">${ic('abrir')}</span>${abreFora}</a>
     <div class="apoio">${professor ? 'Portal do Professor' : 'Portal do Aluno'} · abre no Safari</div>
     <div class="grade-2">
       ${!professor && id ? atalho('calendario', 'Matrícula', oficial.matricula(id)) : ''}
@@ -26,5 +31,6 @@ export default async function menu(tela, { voltar, ir, perfil, acoes }) {
   acoes.voltar = voltar;
   acoes.config = () => ir('configuracoes');
   acoes.biblioteca = () => ir('biblioteca');
+  acoes.editais = () => ir('editais');
   acoes.sair = () => confirmarSaida(ir);
 }

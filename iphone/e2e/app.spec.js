@@ -1,6 +1,6 @@
 // Testa o PWA num iPhone emulado (WebKit), com um Worker falso que responde com as fixtures
 // anonimizadas do projeto. Nenhum pedido vai para a Ufac.
-import { mkdirSync } from 'node:fs';
+import { mkdirSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { expect, test } from '@playwright/test';
 
@@ -127,6 +127,93 @@ test('login em 2 etapas e telas do aluno', async ({ page }) => {
   await expect(qr.locator('svg').first()).toBeVisible();
   await expect(qr.getByText('•••••••8901')).toBeVisible();
   await print(page, '07-qr');
+});
+
+test('Notas: trocar para um semestre anterior, lido só quando escolhido e guardado', async ({ page }) => {
+  const worker = await workerFalso(page);
+  await entrar(page);
+  await page.getByRole('link', { name: 'Notas' }).click();
+  await expect(page.getByText('Disciplina Atual')).toBeVisible();
+  // A lista de semestres vem da mesma página: nenhum quadro do semestre antigo foi pedido.
+  expect((await worker.pedidos()).some((p) => p.includes('idCurricAluno=900010003'))).toBe(false);
+  // O nome acessível começa pelo texto visível (WCAG 2.5.3).
+  await expect(page.getByRole('button', { name: '2º / 2026, trocar semestre' })).toBeVisible();
+  const seletor = page.getByRole('button', { name: /trocar semestre/ });
+  await expect(seletor).toContainText('2º / 2026');
+  expect((await seletor.boundingBox()).height).toBeGreaterThanOrEqual(44);
+
+  await seletor.click();
+  const folha = page.getByRole('dialog', { name: 'Semestre' });
+  await expect(folha.getByRole('button', { name: /2º \/ 2026/ })).toHaveAttribute('aria-current', 'true');
+  await expect(folha.getByText('Atual')).toBeVisible();
+  // Média discreta, só do que já foi lido, avisando que não é o CR.
+  await expect(folha.getByText('Média das disciplinas')).toBeVisible();
+  await expect(folha.getByText('1 disciplina de 1 semestre aberto no app, pela carga horária', { exact: false })).toBeVisible();
+  await expect(folha.getByText('não o CR oficial', { exact: false })).toBeVisible();
+  await print(page, '35-notas-semestres');
+  await folha.getByRole('button', { name: /1º \/ 2026/ }).click();
+  await expect(page.getByText('Disciplina Antiga')).toBeVisible();
+  await expect(page.getByText('Disciplina Atual')).toHaveCount(0);
+  await expect(seletor).toContainText('1º / 2026');
+  await page.getByText('Disciplina Antiga').click();
+  await expect(page.getByRole('cell', { name: 'Média Final' })).toBeVisible();
+  const lidos = (await worker.pedidos()).filter((p) => p.includes('idCurricAluno=900010003')).length;
+  expect(lidos).toBe(1);
+
+  // Voltar ao atual e de novo ao antigo: o antigo sai do cache, sem pedido novo.
+  await seletor.click();
+  await page.getByRole('dialog', { name: 'Semestre' }).getByRole('button', { name: /2º \/ 2026/ }).click();
+  await expect(page.getByText('Disciplina Atual')).toBeVisible();
+  await seletor.click();
+  await page.getByRole('dialog', { name: 'Semestre' }).getByRole('button', { name: /1º \/ 2026/ }).click();
+  await expect(page.getByText('Disciplina Antiga')).toBeVisible();
+  expect((await worker.pedidos()).filter((p) => p.includes('idCurricAluno=900010003')).length).toBe(1);
+  await seletor.click();
+  await expect(page.getByRole('dialog', { name: 'Semestre' }).getByText('2 disciplinas de 2 semestres abertos', { exact: false })).toBeVisible();
+  await page.keyboard.press('Escape');
+  // Semestre encerrado: nada de "quanto preciso no exame".
+  await expect(page.getByText('no exame', { exact: false })).toHaveCount(0);
+
+  // Esc fecha a folha sem trocar.
+  await seletor.click();
+  await expect(page.getByRole('dialog', { name: 'Semestre' })).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('dialog', { name: 'Semestre' })).toHaveCount(0);
+  await expect(page.getByText('Disciplina Antiga')).toBeVisible();
+});
+
+test('Notas: falha no semestre anterior e "Tentar de novo" relê esse semestre', async ({ page }) => {
+  const worker = await workerFalso(page);
+  await entrar(page);
+  await page.getByRole('link', { name: 'Notas' }).click();
+  await expect(page.getByText('Disciplina Atual')).toBeVisible();
+  await page.request.get(`${WORKER}/__falhar-antigo`);
+  await page.getByRole('button', { name: /trocar semestre/ }).click();
+  await page.getByRole('dialog', { name: 'Semestre' }).getByRole('button', { name: /1º \/ 2026/ }).click();
+  const tentar = page.getByRole('button', { name: 'Tentar de novo' });
+  await expect(tentar).toBeVisible();
+  await expect(page.getByText('Disciplina Antiga')).toHaveCount(0);
+  const antes = (await worker.pedidos()).filter((p) => p.includes('idCurricAluno=900010003')).length;
+  await page.request.get(`${WORKER}/__falhar-antigo?ligado=nao`);
+  await tentar.click();
+  await expect(page.getByText('Disciplina Antiga')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Tentar de novo' })).toHaveCount(0);
+  expect((await worker.pedidos()).filter((p) => p.includes('idCurricAluno=900010003')).length).toBe(antes + 1);
+});
+
+test('Notas: quanto preciso no exame, com a regra do Regimento', async ({ page }) => {
+  await workerFalso(page);
+  await entrar(page);
+  await page.getByRole('link', { name: 'Notas' }).click();
+  await page.getByText('Outra Disciplina').click();
+  await expect(page.getByText('Para passar, você precisa de pelo menos 6,5 no exame')).toBeVisible();
+  await expect(page.getByText('Média parcial 3,50', { exact: false })).toBeVisible();
+  await expect(page.getByText('arts. 319 e 320', { exact: false })).toBeVisible();
+  await page.evaluate(() => document.querySelector('.exame-necessario').scrollIntoView({ block: 'center' }));
+  await print(page, '36-notas-exame');
+  // A disciplina com média 8 não pede exame.
+  await page.getByText('Disciplina Atual').click();
+  await expect(page.getByText('no exame', { exact: false })).toHaveCount(0);
 });
 
 test('Portal entra sozinho quando a sessão cai, e para quando a chave é desligada', async ({ page }) => {
@@ -436,4 +523,48 @@ test('Créditos: quem faz o UFAC+, aberto pelas Configurações', async ({ page 
   await print(page, '43-creditos-escuro', { fullPage: true });
   await page.getByRole('button', { name: 'Voltar' }).click();
   await expect(page.getByRole('heading', { name: 'Configurações' })).toBeVisible();
+});
+
+// O service worker do app deixa os pedidos a outros sites passarem direto, mas no WebKit o Playwright não consegue
+// interceptar o que passa por ele: aqui ele fica desligado para o site da Ufac simulado responder.
+test.describe('sem service worker', () => {
+  test.use({ serviceWorkers: 'block' });
+  test('Editais da Proaes e da Prograd: lista pública lida direto do site da Ufac, com cache', async ({ page }) => {
+    await workerFalso(page);
+    // Site da Ufac simulado com as fixtures públicas (nenhum pedido sai para a Ufac).
+    const pedidos = [];
+    await page.route('https://www3.ufac.br/**', (rota) => {
+      const u = new URL(rota.request().url());
+      pedidos.push(u.pathname + u.search);
+      expect(rota.request().headers().accept).toBe('application/json');
+      const arquivo = u.pathname.startsWith('/prograd/') ? 'prograd_editais.json' : 'proaes_editais.json';
+      const corpo = readFileSync(resolve(import.meta.dirname, '../fixtures/public', arquivo), 'utf8');
+      return rota.fulfill({ contentType: 'application/json', headers: { 'Access-Control-Allow-Origin': '*' }, body: corpo });
+    });
+    await entrar(page);
+    await page.getByRole('button', { name: 'Menu' }).click();
+    await expect(page.getByRole('link', { name: /Mapa do campus/ })).toHaveAttribute('href', 'https://sistemas.ufac.br/mapa/');
+    await page.getByRole('button', { name: /Editais/ }).click();
+    await expect(page.getByRole('heading', { name: 'Editais' })).toBeVisible();
+    const edital = page.getByRole('link', { name: /Edital Proaes nº 22\/2026 - Programa Pulsar Acolhe/ });
+    await expect(edital).toBeVisible();
+    await expect(edital).toHaveAttribute('href', 'https://www3.ufac.br/proaes/2026/edital-proaes-no-22-2026-programa-pulsar-acolhe');
+    await expect(edital).toHaveAttribute('target', '_blank');
+    await expect(edital).toContainText('Publicado em 6 de novembro · atualizado em 16 de novembro');
+    await expect(page.getByText('6 editais de 2026')).toBeVisible();
+    await print(page, '44-editais-proaes');
+    await page.getByRole('radio', { name: 'Prograd' }).click();
+    await expect(page.getByRole('link', { name: /Edital Prograd nº 47\/2026/ })).toBeVisible();
+    await expect(page.getByText('4 editais de 2026')).toBeVisible();
+    // Voltar à Proaes e reabrir a tela vem do cache: um pedido só por pró-reitoria.
+    await page.getByRole('radio', { name: 'Proaes' }).click();
+    await expect(edital).toBeVisible();
+    await page.getByRole('button', { name: 'Voltar' }).click();
+    await page.getByRole('button', { name: /Editais/ }).click();
+    await expect(edital).toBeVisible();
+    expect(pedidos.filter((p) => p.startsWith('/proaes/@search'))).toHaveLength(1);
+    expect(pedidos.filter((p) => p.startsWith('/prograd/@search'))).toHaveLength(1);
+    await page.emulateMedia({ colorScheme: 'dark' });
+    await print(page, '45-editais-escuro');
+  });
 });

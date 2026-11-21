@@ -1,0 +1,78 @@
+{
+  "@id": "https://www3.ufac.br/proaes/@search?path.query=%2Fproaes%2F2026&path.depth=1&metadata_fields=effective&metadata_fields=modified",
+  "items": [
+    {
+      "@id": "https://www3.ufac.br/proaes/2026/edital-proaes-no-22-2026-programa-pulsar-acolhe",
+      "@type": "Folder",
+      "description": "",
+      "effective": "2026-11-06T22:13:02+00:00",
+      "image_field": "",
+      "image_scales": null,
+      "modified": "2026-11-16T14:49:40+00:00",
+      "review_state": "published",
+      "title": "Edital Proaes nº 22/2026 - Programa Pulsar Acolhe",
+      "type_title": "Pasta"
+    },
+    {
+      "@id": "https://www3.ufac.br/proaes/2026/edital-n-21-chamamento-publico-em-fluxo-continuo-para-formacao-de-cadastro-de-parceiros-em-saude-sob-a-modalidade-de-valor-social",
+      "@type": "Folder",
+      "description": "Edital Proaes nº 21/2026 Chamamento público em fluxo contínuo para formação de cadastro de parceiros em saúde sob a modalidade de valor social",
+      "effective": "2026-10-23T14:28:47+00:00",
+      "image_field": "",
+      "image_scales": null,
+      "modified": "2026-10-23T14:28:47+00:00",
+      "review_state": "published",
+      "title": "Edital Proaes nº 21/2026 - Chamamento público em fluxo contínuo para Formação de Cadastro de Parceiros em Saúde sob a Modalidade de Valor Social",
+      "type_title": "Pasta"
+    },
+    {
+      "@id": "https://www3.ufac.br/proaes/2026/edital-proaes-no-20-2026-edital-de-selecao-do-programa-pro-esporte-estudantil",
+      "@type": "Folder",
+      "description": "",
+      "effective": "2026-07-20T17:55:00+00:00",
+      "image_field": "",
+      "image_scales": null,
+      "modified": "2026-08-06T01:18:18+00:00",
+      "review_state": "published",
+      "title": "Edital Proaes nº 20/2026 - Edital de seleção do Programa Pró-Esporte Estudantil JUBS",
+      "type_title": "Pasta"
+    },
+    {
+      "@id": "https://www3.ufac.br/proaes/2026/edital-nai-proaes-no-19-2026-selecao-do-programa-de-incentivo-ao-academico-publico-alvo-da-educacao-especial-pro-pcd-e-19",
+      "@type": "Folder",
+      "description": "",
+      "effective": "2026-06-22T20:11:34+00:00",
+      "image_field": "",
+      "image_scales": null,
+      "modified": "2026-11-18T22:03:52+00:00",
+      "review_state": "published",
+      "title": "Edital NAI/Proaes nº 19/2026 - Seleção do Programa de Incentivo ao Acadêmico Público-Alvo da Educação Especial - Pró-PcD (E-19).",
+      "type_title": "Pasta"
+    },
+    {
+      "@id": "https://www3.ufac.br/proaes/2026/edital-proaes-no-18-2026-edital-de-selecao-do-programa-de-auxilio-para-transporte-coletivo-urbano-passe-livre-e-auxilio-deslocamento-intermunicipal",
+      "@type": "Folder",
+      "description": "",
+      "effective": "2026-06-22T17:13:40+00:00",
+      "image_field": "",
+      "image_scales": null,
+      "modified": "2026-11-16T19:51:52+00:00",
+      "review_state": "published",
+      "title": "Edital Proaes nº 18/2026 - Edital de seleção do Programa de Auxílio para transporte coletivo urbano - Passe Livre E Auxílio Deslocamento Intermunicipal",
+      "type_title": "Pasta"
+    },
+    {
+      "@id": "https://www3.ufac.br/proaes/2026/edital-proaes-no-17-2026-edital-de-selecao-do-programa-de-auxilio-primeira-infancia-e-auxilio-moradia-e-17-2026",
+      "@type": "Folder",
+      "description": "",
+      "effective": "2026-06-22T17:08:31+00:00",
+      "image_field": "",
+      "image_scales": null,
+      "modified": "2026-11-16T19:51:05+00:00",
+      "review_state": "published",
+      "title": "Edital Proaes nº 17/2026 - Edital de seleção do Programa de Auxílio Primeira Infância e Auxílio Moradia (E-17/2026)",
+      "type_title": "Pasta"
+    }
+  ],
+  "items_total": 6
+}

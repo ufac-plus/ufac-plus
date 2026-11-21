@@ -9,6 +9,7 @@ import { aplicarAparencia } from '../main.js';
 import { avisar, botaoRedondo, cabecalho, cabecalhoSecao, confirmar, faixa, html, ic, item, marcarSegmento, montar, segmentos } from '../ui/componentes.js';
 import { confirmarSaida, escolherFoto, fotoOuIniciais } from './comum.js';
 import { iniciais } from '../lib/dominio/academico.js';
+import { apagarEditaisGuardados } from '../lib/editais.js';
 
 const interruptor = (id, ligado, rotulo, sub = '') => html`
   <label class="item" style="cursor:pointer">
@@ -145,6 +146,7 @@ export default async function configuracoes(tela, { voltar, ir, perfil, acoes, p
     const ok = await confirmar({ titulo: 'Limpar dados salvos?', texto: 'Apaga notas, horários, saldo e cardápio deste iPhone. Você continua na conta e tudo é lido de novo da Ufac.', sim: 'Limpar' });
     if (!ok) return;
     for (const k of ['ru', 'cardapio', 'identificacao', 'horarios', 'notas', 'historico', 'classroom', 'professor', 'idInterno', 'urlMaisRelatorios', 'urlComunicacoes', 'diagnosticoPortal', 'registro', 'bibliotecaBuscas', 'bibliotecaExemplares']) await apagar(k);
+    await apagarEditaisGuardados();
     avisar('Dados apagados. Tudo será lido de novo.');
   };
   acoes['esquecer-senha'] = async () => {

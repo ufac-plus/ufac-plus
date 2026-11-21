@@ -1,8 +1,8 @@
 import { ler } from '../lib/armazenamento.js';
-import { atualizarNotas } from '../lib/dados.js';
-import { situacaoApresentavel, situacaoFaltas, totalDaNota } from '../lib/dominio/academico.js';
+import { atualizarNotas, atualizarSemestre, listaDeSemestres, precisaLer, semestreEmCache } from '../lib/dados.js';
+import { exameDaDisciplina, formatarNota, mediaDasDisciplinas, semestreCurto, situacaoApresentavel, situacaoFaltas, totalDaNota } from '../lib/dominio/academico.js';
 import { rotuloAtualizado } from '../lib/dominio/formatos.js';
-import { barraCompacta, botaoRedondo, cabecalho, html, montar, notaRodape, remontar, puxarParaAtualizar, vazio } from '../ui/componentes.js';
+import { abrirFolha, anunciar, barraCompacta, botaoRedondo, cabecalho, cru, html, ic, montar, notaRodape, remontar, puxarParaAtualizar, vazio } from '../ui/componentes.js';
 import { expirado, faixaExpirada, faixaFalha, fraseDeFalha } from './comum.js';
 
 function blocoFaltas(d) {
@@ -25,6 +25,27 @@ const pesoCurto = (peso) => {
   return p.includes('%') ? p.replace(/(\d+)[.,](\d*?)0*%/, (_, i, d) => (d ? `${i},${d}%` : `${i}%`)) : `(${p})`;
 };
 
+/** Nota mínima no exame, com a regra citada. Só fala da nota: aprovação e reprovação quem diz é o portal. */
+function blocoExame(d, atual) {
+  const e = exameDaDisciplina(d, { atual });
+  if (!e) return '';
+  return html`<div class="exame-necessario">
+    <div class="forte">Para passar, você precisa de pelo menos ${formatarNota(e.necessaria)} no exame</div>
+    <div class="apoio">Média parcial ${formatarNota(e.mediaParcial, 2)}. Média final = (média parcial + exame) ÷ 2, e passa quem chega a 5, com 75% de frequência (Regimento Geral da Ufac, arts. 319 e 320).</div>
+  </div>`;
+}
+
+/** Resumo discreto dos semestres já lidos. Não é o CR: a Ufac não publica a fórmula dele. */
+function resumoMedia(cache) {
+  const r = mediaDasDisciplinas(cache ? [cache, ...Object.values(cache.anteriores ?? {})] : []);
+  if (!r) return '';
+  const conta = `${r.disciplinas} ${r.disciplinas === 1 ? 'disciplina' : 'disciplinas'} de ${r.semestres} ${r.semestres === 1 ? 'semestre aberto' : 'semestres abertos'} no app${r.ponderada ? ', pela carga horária' : ''}`;
+  return html`<div class="resumo-media">
+    <div class="linha"><span class="cresce">Média das disciplinas</span><span class="forte">${formatarNota(r.media, 2)}</span></div>
+    <div class="apoio">${conta}. É uma conta do app, não o CR oficial, que está no relatório "Histórico Escolar CR – Aprovados".</div>
+  </div>`;
+}
+
 /** Esqueleto no formato de uma disciplina (nome, média à direita, barra de faltas): sem salto quando os dados chegam. */
 function esqueletoDisciplinas() {
   return html`${[0, 1].map(() => html`<div class="cartao" aria-busy="true" aria-label="Carregando">
@@ -32,18 +53,56 @@ function esqueletoDisciplinas() {
     <div class="esqueleto" style="height:8px;width:100%;margin-top:16px"></div></div>`)}`;
 }
 
+/** Pílula do cabeçalho que abre a lista de semestres. Com um semestre só, fica o texto de sempre. */
+function seletorSemestre(semestres, s) {
+  if (semestres.length < 2) return s.semestre;
+  // O nome acessível começa pelo texto visível (WCAG 2.5.3): o Controle por Voz acha "2º / 2026".
+  const curto = semestreCurto(s.semestre);
+  return html`<button class="pilula-semestre tocavel" data-acao="semestres" aria-haspopup="dialog" aria-label="${curto}, trocar semestre"><span>${curto}</span>${ic('seta')}</button>`;
+}
+
+/** Folha com todos os semestres da página, o mais recente no topo. Resolve o nome escolhido (ou null). */
+function escolherSemestre(semestres, visto, cache) {
+  return new Promise((resolve) => {
+    let escolha = null;
+    const { folha, fechar } = abrirFolha(html`
+      <h2>Semestre</h2>
+      ${resumoMedia(cache)}
+      <div class="lista-semestres">
+        ${semestres.map((s) => html`<button class="item-semestre tocavel" data-semestre="${s.semestre}" ${s.semestre === visto ? cru('aria-current="true"') : ''}>
+          <span class="cresce">${semestreCurto(s.semestre)}</span>
+          ${s.atual ? html`<span class="selo">Atual</span>` : ''}
+          ${s.semestre === visto ? html`<span class="visto-marca">${ic('check')}</span>` : ''}
+        </button>`)}
+      </div>
+      <button class="botao largo claro tocavel" data-fechar style="margin-top:14px">Fechar</button>`, { aoFechar: () => resolve(escolha) });
+    folha.addEventListener('click', (e) => {
+      const item = e.target.closest('[data-semestre]');
+      if (item) escolha = item.dataset.semestre;
+      if (item || e.target.closest('[data-fechar]')) fechar();
+    });
+  });
+}
+
 export default async function notas(tela, { ir, acoes }) {
   let falha = '';
   let aberta = null;
+  let escolhido = null; // null = semestre atual
+  // Semestres sendo lidos agora (null = o atual): o atual e um anterior podem correr juntos.
+  const lendo = new Set();
 
-  async function desenhar(carregando = false) {
-    const n = await ler('notas');
+  async function desenhar() {
+    const cache = await ler('notas');
+    const semestres = listaDeSemestres(cache);
+    const n = semestreEmCache(cache, escolhido);
+    const vazioAinda = escolhido ? { semestre: escolhido, atual: false } : null;
+    const s = n ?? vazioAinda;
     remontar(tela.querySelector('.pilha'), html`
-      ${cabecalho({ titulo: 'Notas', sub: n ? `${n.semestre} · ${rotuloAtualizado(n.lidoEm)}` : 'Semestre atual', acoes: botaoRedondo('menu', 'Menu', 'menu') })}
+      ${cabecalho({ titulo: 'Notas', sub: s ? html`${seletorSemestre(semestres, s)}${n?.lidoEm ? ` · ${rotuloAtualizado(n.lidoEm)}` : ''}` : 'Semestre atual', acoes: botaoRedondo('menu', 'Menu', 'menu') })}
       ${(await expirado('portal')) ? faixaExpirada('portal') : ''}
       ${falha ? faixaFalha(falha) : ''}
       ${!n
-        ? carregando ? esqueletoDisciplinas() : html`<div class="cartao">${vazio('notas', 'Ainda não li suas notas', 'Puxe para baixo para tentar de novo.')}</div>`
+        ? lendo.has(escolhido) ? esqueletoDisciplinas() : html`<div class="cartao">${vazio('notas', escolhido ? 'Ainda não li as notas deste semestre' : 'Ainda não li suas notas', 'Puxe para baixo para tentar de novo.')}</div>`
         : n.disciplinas.length === 0
           ? html`<div class="cartao">${vazio('notas', 'Nenhuma disciplina neste semestre')}</div>`
           : n.disciplinas.map((d, i) => html`
@@ -56,7 +115,8 @@ export default async function notas(tela, { ir, acoes }) {
               ${aberta === i
                 ? html`<table class="tabela-notas">${d.notas.map((nota) => html`<tr><td>${nota.rotulo}${nota.peso ? html` <span class="apoio">${pesoCurto(nota.peso)}</span>` : ''}</td><td>${totalDaNota(nota) || '—'}</td></tr>`)}
                     ${d.resumo.map((r) => html`<tr class="${/m[ée]dia final/i.test(r.rotulo) ? 'final' : ''}"><td>${r.rotulo}</td><td>${r.valor || '—'}</td></tr>`)}</table>
-                    ${!d.notas.length && !d.resumo.length ? html`<div class="apoio" style="margin-top:8px">O portal ainda não publicou o quadro de notas.</div>` : ''}`
+                    ${!d.notas.length && !d.resumo.length ? html`<div class="apoio" style="margin-top:8px">O portal ainda não publicou o quadro de notas.</div>` : ''}
+                    ${blocoExame(d, n.atual)}`
                 : ''}
             </section>`)}
       ${n ? notaRodape('É preciso ter 75% de frequência. As faltas permitidas dependem da carga horária de cada disciplina: 16 numa de 60 h, 8 numa de 30 h.') : ''}
@@ -72,19 +132,43 @@ export default async function notas(tela, { ir, acoes }) {
     aberta = aberta === i ? null : i;
     desenhar();
   };
-  const tem = await ler('notas');
-  await desenhar(!tem);
+  acoes.semestres = async () => {
+    const antes = await ler('notas');
+    const nome = await escolherSemestre(listaDeSemestres(antes), escolhido ?? antes?.semestre, antes);
+    if (!nome) return;
+    const cache = await ler('notas');
+    const novo = nome === cache?.semestre ? null : nome;
+    if (novo === escolhido) return;
+    escolhido = novo;
+    aberta = null;
+    falha = '';
+    anunciar(`Mostrando ${semestreCurto(nome)}`);
+    // Semestre encerrado já lido: abre do cache, sem pedir nada à Ufac.
+    if (precisaLer(cache, escolhido) && escolhido) await atualizar();
+    else await desenhar();
+  };
+
+  if (!(await ler('notas'))) lendo.add(null);
+  await desenhar();
 
   async function atualizar() {
+    const alvo = escolhido;
     falha = '';
+    lendo.add(alvo);
+    await desenhar();
     try {
-      await atualizarNotas();
+      if (alvo) await atualizarSemestre(alvo);
+      else await atualizarNotas();
     } catch (e) {
-      falha = fraseDeFalha(e, 'o Portal', (await ler('notas'))?.lidoEm);
+      // A pessoa pode ter trocado de semestre enquanto este era lido: a frase é só do que está na tela.
+      if (alvo === escolhido) falha = fraseDeFalha(e, 'o Portal', semestreEmCache(await ler('notas'), alvo)?.lidoEm);
     }
+    lendo.delete(alvo);
     await desenhar();
   }
-  tela.addEventListener('atualizar', atualizar);
+  // Voltar ao app (forcar: false) relê só o semestre atual, porque um encerrado não muda. "Tentar de novo"
+  // (forcar: true) e puxar para atualizar releem o que está na tela.
+  tela.addEventListener('atualizar', (e) => (e.detail?.forcar || !escolhido) && atualizar());
   puxarParaAtualizar(tela, atualizar);
-  if (!tem || Date.now() - new Date(tem.lidoEm).getTime() > 6 * 3600 * 1000) await atualizar();
+  if (precisaLer(await ler('notas'), null)) await atualizar();
 }

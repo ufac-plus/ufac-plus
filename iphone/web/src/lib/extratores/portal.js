@@ -86,11 +86,8 @@ export function lerCargaHoraria(pagina) {
   return null;
 }
 
-/** Página de Notas. Só o semestre mais recente, para não fazer dezenas de pedidos à Ufac. */
-export function lerListaDeNotas(pagina) {
-  const titulo = parse(pagina).querySelector('a.accordionTurma');
-  const tabela = titulo?.parentElement?.nextElementSibling?.querySelector('table.table-turmas');
-  if (!titulo || !tabela) return null;
+/** Disciplinas de um bloco (um semestre) da página de Notas. */
+function disciplinasDoBloco(tabela) {
   const disciplinas = [];
   for (const linha of tabela.querySelectorAll('tbody tr')) {
     const celulas = linha.children;
@@ -106,7 +103,35 @@ export function lerListaDeNotas(pagina) {
       urlTurma: turma ? new URL(turma, BASE).toString() : null,
     });
   }
-  return { semestre: limpo(titulo.textContent), disciplinas };
+  return disciplinas;
+}
+
+/** "2° Semestre / 2026" vira 20262, para ordenar do mais recente para o mais antigo. */
+const ordemDoSemestre = (nome) => {
+  const m = /(\d+)\D+(\d{4})/.exec(nome);
+  return m ? Number(m[2]) * 10 + Number(m[1]) : -1;
+};
+
+/**
+ * Página de Notas: todos os semestres, o mais recente primeiro. A tabela de cada semestre já vem no HTML;
+ * o quadro de cada disciplina, não (é o notaturma, pedido à parte). Null se não for a página de Notas.
+ */
+export function lerSemestresDeNotas(pagina) {
+  const blocos = [];
+  for (const titulo of parse(pagina).querySelectorAll('a.accordionTurma')) {
+    const tabela = titulo.parentElement?.nextElementSibling?.querySelector('table.table-turmas');
+    blocos.push({ semestre: limpo(titulo.textContent), tabela });
+  }
+  // sort é estável: semestre com nome fora do padrão fica onde a página o pôs, depois dos reconhecidos.
+  blocos.sort((a, b) => ordemDoSemestre(b.semestre) - ordemDoSemestre(a.semestre));
+  // O mais recente sem tabela é layout desconhecido: pulá-lo faria um semestre encerrado virar o atual.
+  if (!blocos.length || !blocos[0].tabela) return null;
+  return blocos.filter((b) => b.tabela).map((b) => ({ semestre: b.semestre, disciplinas: disciplinasDoBloco(b.tabela) }));
+}
+
+/** Página de Notas, só o semestre mais recente (o que as outras telas usam). */
+export function lerListaDeNotas(pagina) {
+  return lerSemestresDeNotas(pagina)?.[0] ?? null;
 }
 
 /** Quadro de notas de uma disciplina. Sem quadro, volta só com o que já veio da lista. */

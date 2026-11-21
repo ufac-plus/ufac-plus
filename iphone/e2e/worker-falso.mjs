@@ -8,7 +8,7 @@ const FIXTURES = resolve(import.meta.dirname, '../fixtures');
 const fixture = (nome) => readFileSync(resolve(FIXTURES, nome), 'utf8');
 const PDF = '%PDF-1.4\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj 2 0 obj<</Type/Pages/Kids[3 0 R]/Count 1>>endobj 3 0 obj<</Type/Page/Parent 2 0 R/MediaBox[0 0 200 200]>>endobj\ntrailer<</Root 1 0 R>>\n%%EOF';
 
-let estado = { portal: false, eticket: false, eticketMudo: false, pedidos: [] };
+let estado = { portal: false, eticket: false, eticketMudo: false, falharAntigo: false, pedidos: [] };
 
 createServer((req, res) => {
   let corpo = '';
@@ -28,7 +28,7 @@ createServer((req, res) => {
     };
     if (req.method === 'OPTIONS') return responder(204, '');
     if (url.pathname === '/__reset') {
-      estado = { portal: false, eticket: false, eticketMudo: false, pedidos: [] };
+      estado = { portal: false, eticket: false, eticketMudo: false, falharAntigo: false, pedidos: [] };
       return responder(200, 'ok');
     }
     // Derruba a sessão do Portal (como quando ela cai em menos de 1 hora).
@@ -39,6 +39,11 @@ createServer((req, res) => {
     // Simula o eTICKET sem responder à Cloudflare (o pedido fica pendurado para sempre).
     if (url.pathname === '/__eticket-mudo') {
       estado.eticketMudo = true;
+      return responder(200, 'ok');
+    }
+    // Liga e desliga a falha do Portal no quadro do semestre anterior (para o "Tentar de novo").
+    if (url.pathname === '/__falhar-antigo') {
+      estado.falharAntigo = url.searchParams.get('ligado') !== 'nao';
       return responder(200, 'ok');
     }
     if (estado.eticketMudo && url.pathname.startsWith('/eticket')) return;
@@ -87,6 +92,11 @@ createServer((req, res) => {
       if (q.includes('relatorio/')) return responder(200, PDF, final, 'application/pdf');
       if (q.includes('quadrohorario')) return responder(200, fixture('portal_horarios_ajax.html'), final);
       if (q.includes('nota/nota.action')) return responder(200, fixture('portal_notas.html'), final);
+      // A segunda disciplina do semestre atual tem média parcial abaixo de 8 e o exame ainda sem nota.
+      if (estado.falharAntigo && q.includes('notaturma.action') && q.includes('idCurricAluno=900010003')) {
+        return responder(500, 'erro', '');
+      }
+      if (q.includes('notaturma.action') && q.includes('idCurricAluno=900010002')) return responder(200, fixture('portal_notaturma_exame_ajax.html'), final);
       if (q.includes('notaturma.action')) return responder(200, fixture('portal_notaturma_ajax.html'), final);
       if (q.includes('turma.action')) return responder(200, fixture('portal_turma.html'), final);
     }

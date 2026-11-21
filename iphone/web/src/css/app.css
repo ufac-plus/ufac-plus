@@ -843,6 +843,82 @@ h2[tabindex='-1']:focus {
   color: var(--muted);
 }
 
+/* ---------- Seletor de semestre (Notas) ---------- */
+
+/* Pílula no cabeçalho: mostra o semestre visto e abre a lista. 44 px de toque. */
+.pilula-semestre {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 44px;
+  padding: 0 12px 0 14px;
+  margin: 2px 0;
+  border-radius: var(--raio-pilula);
+  corner-shape: round;
+  background: var(--nav-active-bg);
+  color: var(--nav-active);
+  font-size: var(--fs-corpo);
+  font-weight: 600;
+}
+.pilula-semestre svg {
+  width: 16px;
+  height: 16px;
+  transform: rotate(90deg); /* a seta de "abrir" virada para baixo: abre uma lista */
+}
+.lista-semestres {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: var(--esp-3);
+}
+.item-semestre {
+  display: flex;
+  align-items: center;
+  gap: var(--esp-3);
+  min-height: 52px;
+  width: 100%;
+  padding: 0 var(--esp-4);
+  border-radius: var(--raio-md);
+  text-align: left;
+  font-size: var(--fs-corpo);
+}
+.item-semestre[aria-current='true'] {
+  background: var(--nav-active-bg);
+  color: var(--nav-active);
+  font-weight: 600;
+}
+.item-semestre .visto-marca {
+  display: inline-flex;
+}
+.item-semestre .visto-marca svg {
+  width: 20px;
+  height: 20px;
+}
+/* Média das disciplinas no topo da folha de semestres: discreta, sem cara de nota oficial. */
+.resumo-media {
+  margin-top: var(--esp-3);
+  padding: var(--esp-3) var(--esp-4);
+  border-radius: var(--raio-md);
+  background: var(--chrome);
+  font-size: var(--fs-corpo);
+  font-variant-numeric: tabular-nums;
+}
+.resumo-media .apoio {
+  margin-top: 4px;
+}
+/* Quanto falta no exame: mesma etiqueta âmbar do "começa em", sem tom de alarme. */
+.exame-necessario {
+  margin-top: var(--esp-3);
+  padding: var(--esp-3);
+  border-radius: var(--raio-md);
+  background: var(--chip-bg);
+  color: var(--chip-text);
+}
+.exame-necessario .apoio {
+  color: inherit;
+  margin-top: 4px;
+}
+
 /* ---------- Formulário ---------- */
 
 .campo {
