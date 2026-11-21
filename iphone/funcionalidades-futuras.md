@@ -127,8 +127,8 @@ há editais da Proaes também em `www.ufac.br/proaes`, que não entram na lista 
 parcial (MP) acima de 0 e abaixo de 8, exame e média final ainda em branco e faltas dentro do limite, o cartão mostra a
 nota mínima no exame (EF = 10 − MP, arredondada para cima na 1ª casa), citando o Regimento Geral da Ufac (Res. CONSU
 33/2011, alterada pelas 43/2011 e 50/2013), arts. 305, 316, 317, 319 e 320. O que o portal lançar (Exame e Média Final)
-sempre vale mais. Na folha de semestres há a "Média das disciplinas" dos semestres já abertos no app (ponderada pela
-carga horária quando todas a têm), com o aviso de que é uma conta do app, não o CR.
+sempre vale mais.
+A "Média das disciplinas" na folha de semestres entrou na 1.6 e foi retirada na 1.7, a pedido do Matheus.
 
 **CR oficial (fica de fora):** o Regimento não traz "coeficiente", "CR" nem "IRA", e nenhuma resolução publicada traz a
 fórmula. O CR é calculado pelo SIE e sai no relatório "Histórico Escolar CR – Aprovados". Só entra no app se um

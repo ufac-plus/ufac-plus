@@ -894,18 +894,6 @@ h2[tabindex='-1']:focus {
   width: 20px;
   height: 20px;
 }
-/* Média das disciplinas no topo da folha de semestres: discreta, sem cara de nota oficial. */
-.resumo-media {
-  margin-top: var(--esp-3);
-  padding: var(--esp-3) var(--esp-4);
-  border-radius: var(--raio-md);
-  background: var(--chrome);
-  font-size: var(--fs-corpo);
-  font-variant-numeric: tabular-nums;
-}
-.resumo-media .apoio {
-  margin-top: 4px;
-}
 /* Quanto falta no exame: mesma etiqueta âmbar do "começa em", sem tom de alarme. */
 .exame-necessario {
   margin-top: var(--esp-3);

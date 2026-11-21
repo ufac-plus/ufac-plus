@@ -146,10 +146,6 @@ test('Notas: trocar para um semestre anterior, lido só quando escolhido e guard
   const folha = page.getByRole('dialog', { name: 'Semestre' });
   await expect(folha.getByRole('button', { name: /2º \/ 2026/ })).toHaveAttribute('aria-current', 'true');
   await expect(folha.getByText('Atual')).toBeVisible();
-  // Média discreta, só do que já foi lido, avisando que não é o CR.
-  await expect(folha.getByText('Média das disciplinas')).toBeVisible();
-  await expect(folha.getByText('1 disciplina de 1 semestre aberto no app, pela carga horária', { exact: false })).toBeVisible();
-  await expect(folha.getByText('não o CR oficial', { exact: false })).toBeVisible();
   await print(page, '35-notas-semestres');
   await folha.getByRole('button', { name: /1º \/ 2026/ }).click();
   await expect(page.getByText('Disciplina Antiga')).toBeVisible();
@@ -169,7 +165,8 @@ test('Notas: trocar para um semestre anterior, lido só quando escolhido e guard
   await expect(page.getByText('Disciplina Antiga')).toBeVisible();
   expect((await worker.pedidos()).filter((p) => p.includes('idCurricAluno=900010003')).length).toBe(1);
   await seletor.click();
-  await expect(page.getByRole('dialog', { name: 'Semestre' }).getByText('2 disciplinas de 2 semestres abertos', { exact: false })).toBeVisible();
+  // A média geral das disciplinas saiu na 1.7: a folha só lista os semestres.
+  await expect(page.getByRole('dialog', { name: 'Semestre' }).getByText('Média', { exact: false })).toHaveCount(0);
   await page.keyboard.press('Escape');
   // Semestre encerrado: nada de "quanto preciso no exame".
   await expect(page.getByText('no exame', { exact: false })).toHaveCount(0);

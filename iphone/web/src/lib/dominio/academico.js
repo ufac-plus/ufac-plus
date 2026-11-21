@@ -140,33 +140,3 @@ export function exameDaDisciplina(d, { atual }) {
   const necessaria = notaNecessariaNoExame(mediaParcial);
   return necessaria == null ? null : { mediaParcial, necessaria };
 }
-
-/**
- * Média das médias finais dos semestres em cache, ponderada pela carga horária quando todas a têm. Conta do app,
- * não o CR: a Ufac não publica a fórmula do CR (o valor oficial sai no relatório "Histórico Escolar CR – Aprovados").
- */
-export function mediaDasDisciplinas(semestres) {
-  let soma = 0;
-  let pesos = 0;
-  let simples = 0;
-  let n = 0;
-  let semCarga = false;
-  let comNota = 0;
-  for (const s of semestres ?? []) {
-    let contou = false;
-    for (const d of s?.disciplinas ?? []) {
-      const mf = lerNumero(d.media);
-      if (mf == null) continue;
-      const carga = Number(d.cargaHoraria) > 0 ? Number(d.cargaHoraria) : null;
-      if (carga == null) semCarga = true;
-      soma += mf * (carga ?? 0);
-      pesos += carga ?? 0;
-      simples += mf;
-      n++;
-      contou = true;
-    }
-    if (contou) comNota++;
-  }
-  if (!n) return null;
-  return { media: semCarga ? simples / n : soma / pesos, disciplinas: n, semestres: comNota, ponderada: !semCarga };
-}

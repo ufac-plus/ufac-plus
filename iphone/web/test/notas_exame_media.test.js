@@ -1,7 +1,6 @@
-// "Quanto preciso no exame" (Regimento Geral da Ufac, arts. 316, 317, 319 e 320) e a média das disciplinas
-// dos semestres em cache (conta do app: a fórmula do CR oficial não é publicada).
+// "Quanto preciso no exame" (Regimento Geral da Ufac, arts. 316, 317, 319 e 320)
 import { describe, expect, test } from 'vitest';
-import { exameDaDisciplina, formatarNota, lerNumero, mediaDasDisciplinas, notaNecessariaNoExame } from '../src/lib/dominio/academico.js';
+import { exameDaDisciplina, formatarNota, lerNumero, notaNecessariaNoExame } from '../src/lib/dominio/academico.js';
 
 describe('lerNumero', () => {
   test('vírgula ou ponto, com espaços', () => {
@@ -86,27 +85,6 @@ describe('exameDaDisciplina', () => {
   test('sem quadro de notas: nada', () => {
     expect(exameDaDisciplina({ ...disciplina(), notas: [], resumo: [] }, { atual: true })).toBeNull();
     expect(exameDaDisciplina(null, { atual: true })).toBeNull();
-  });
-});
-
-describe('mediaDasDisciplinas', () => {
-  const d = (media, cargaHoraria = null) => ({ disciplina: 'X', media, cargaHoraria });
-  test('ponderada pela carga horária quando todas têm carga', () => {
-    const r = mediaDasDisciplinas([{ disciplinas: [d('8,0', 60), d('6,0', 30)] }, { disciplinas: [d('7,0', 30)] }]);
-    expect(r).toEqual({ media: (8 * 60 + 6 * 30 + 7 * 30) / 120, disciplinas: 3, semestres: 2, ponderada: true });
-  });
-  test('sem a carga de alguma, média simples', () => {
-    const r = mediaDasDisciplinas([{ disciplinas: [d('8,0', 60), d('6,0')] }]);
-    expect(r).toEqual({ media: 7, disciplinas: 2, semestres: 1, ponderada: false });
-  });
-  test('ignora disciplina sem média final (em andamento, vazia ou traço)', () => {
-    const r = mediaDasDisciplinas([{ disciplinas: [d('', 60), d('—', 60), d('9.0', 60)] }, { disciplinas: [d('')] }]);
-    expect(r).toEqual({ media: 9, disciplinas: 1, semestres: 1, ponderada: true });
-  });
-  test('nenhuma média final: null', () => {
-    expect(mediaDasDisciplinas([{ disciplinas: [d('')] }])).toBeNull();
-    expect(mediaDasDisciplinas([])).toBeNull();
-    expect(mediaDasDisciplinas([{ disciplinas: undefined }])).toBeNull();
   });
 });
 

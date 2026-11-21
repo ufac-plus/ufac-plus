@@ -1,6 +1,6 @@
 import { ler } from '../lib/armazenamento.js';
 import { atualizarNotas, atualizarSemestre, listaDeSemestres, precisaLer, semestreEmCache } from '../lib/dados.js';
-import { exameDaDisciplina, formatarNota, mediaDasDisciplinas, semestreCurto, situacaoApresentavel, situacaoFaltas, totalDaNota } from '../lib/dominio/academico.js';
+import { exameDaDisciplina, formatarNota, semestreCurto, situacaoApresentavel, situacaoFaltas, totalDaNota } from '../lib/dominio/academico.js';
 import { rotuloAtualizado } from '../lib/dominio/formatos.js';
 import { abrirFolha, anunciar, barraCompacta, botaoRedondo, cabecalho, cru, html, ic, montar, notaRodape, remontar, puxarParaAtualizar, vazio } from '../ui/componentes.js';
 import { expirado, faixaExpirada, faixaFalha, fraseDeFalha } from './comum.js';
@@ -35,17 +35,6 @@ function blocoExame(d, atual) {
   </div>`;
 }
 
-/** Resumo discreto dos semestres já lidos. Não é o CR: a Ufac não publica a fórmula dele. */
-function resumoMedia(cache) {
-  const r = mediaDasDisciplinas(cache ? [cache, ...Object.values(cache.anteriores ?? {})] : []);
-  if (!r) return '';
-  const conta = `${r.disciplinas} ${r.disciplinas === 1 ? 'disciplina' : 'disciplinas'} de ${r.semestres} ${r.semestres === 1 ? 'semestre aberto' : 'semestres abertos'} no app${r.ponderada ? ', pela carga horária' : ''}`;
-  return html`<div class="resumo-media">
-    <div class="linha"><span class="cresce">Média das disciplinas</span><span class="forte">${formatarNota(r.media, 2)}</span></div>
-    <div class="apoio">${conta}. É uma conta do app, não o CR oficial, que está no relatório "Histórico Escolar CR – Aprovados".</div>
-  </div>`;
-}
-
 /** Esqueleto no formato de uma disciplina (nome, média à direita, barra de faltas): sem salto quando os dados chegam. */
 function esqueletoDisciplinas() {
   return html`${[0, 1].map(() => html`<div class="cartao" aria-busy="true" aria-label="Carregando">
@@ -62,12 +51,11 @@ function seletorSemestre(semestres, s) {
 }
 
 /** Folha com todos os semestres da página, o mais recente no topo. Resolve o nome escolhido (ou null). */
-function escolherSemestre(semestres, visto, cache) {
+function escolherSemestre(semestres, visto) {
   return new Promise((resolve) => {
     let escolha = null;
     const { folha, fechar } = abrirFolha(html`
       <h2>Semestre</h2>
-      ${resumoMedia(cache)}
       <div class="lista-semestres">
         ${semestres.map((s) => html`<button class="item-semestre tocavel" data-semestre="${s.semestre}" ${s.semestre === visto ? cru('aria-current="true"') : ''}>
           <span class="cresce">${semestreCurto(s.semestre)}</span>
@@ -134,7 +122,7 @@ export default async function notas(tela, { ir, acoes }) {
   };
   acoes.semestres = async () => {
     const antes = await ler('notas');
-    const nome = await escolherSemestre(listaDeSemestres(antes), escolhido ?? antes?.semestre, antes);
+    const nome = await escolherSemestre(listaDeSemestres(antes), escolhido ?? antes?.semestre);
     if (!nome) return;
     const cache = await ler('notas');
     const novo = nome === cache?.semestre ? null : nome;
