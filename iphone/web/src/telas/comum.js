@@ -2,7 +2,7 @@
 import { ler, gravar } from '../lib/armazenamento.js';
 import { SemConexao } from '../lib/api.js';
 import { ErroLeitura } from '../lib/dados.js';
-import { abreFora, confirmar, faixa, html, ic } from '../ui/componentes.js';
+import { abreFora, avisar, confirmar, faixa, html, ic } from '../ui/componentes.js';
 import { formatarHora, formatarMoeda, rotuloAtualizado } from '../lib/dominio/formatos.js';
 import { URL_RECARGA } from '../lib/config.js';
 import { sair } from '../lib/sessao.js';
@@ -114,25 +114,95 @@ export async function confirmarSaida(ir) {
   ir('boas-vindas', { substituir: true });
 }
 
+export const FALHA_FOTO = 'Não consegui abrir essa foto. Tente outra ou salve-a no iPhone antes.';
+const PRAZO_FOTO_MS = 20000; // foto do iCloud ainda baixando pode nunca terminar: não deixar o toque pendurado
+
+const comPrazo = (promessa, ms) => Promise.race([promessa, new Promise((_, nao) => setTimeout(() => nao(new Error('prazo')), ms))]);
+
+/** Abre a imagem: createImageBitmap primeiro; se ele recusar (HEIC em iOS antigo), tenta pelo <img>, que o Safari decodifica. */
+async function abrirImagem(blob) {
+  if (typeof createImageBitmap === 'function') {
+    try {
+      const b = await createImageBitmap(blob);
+      if (b.width && b.height) return { fonte: b, largura: b.width, altura: b.height, soltar: () => b.close?.() };
+    } catch {
+      /* segue para o <img> */
+    }
+  }
+  const url = URL.createObjectURL(blob);
+  const img = new Image();
+  img.src = url;
+  try {
+    if (img.decode) await img.decode();
+    else await new Promise((ok, nao) => ((img.onload = ok), (img.onerror = nao)));
+  } catch (e) {
+    URL.revokeObjectURL(url);
+    throw e;
+  }
+  if (!img.naturalWidth || !img.naturalHeight) {
+    URL.revokeObjectURL(url);
+    throw new Error('imagem vazia');
+  }
+  return { fonte: img, largura: img.naturalWidth, altura: img.naturalHeight, soltar: () => URL.revokeObjectURL(url) };
+}
+
+/** Recorta no centro em quadrado e reduz a 512 px (JPEG). Lança se a foto não abrir. */
+export async function reduzirFoto(arquivo) {
+  // Ler os bytes antes garante que a foto já chegou (do iCloud) e não muda no meio da leitura.
+  const bytes = await arquivo.arrayBuffer();
+  if (!bytes.byteLength) throw new Error('arquivo vazio');
+  const imagem = await abrirImagem(new Blob([bytes], { type: arquivo.type || 'image/jpeg' }));
+  try {
+    const lado = Math.min(imagem.largura, imagem.altura);
+    const canvas = document.createElement('canvas');
+    canvas.width = canvas.height = 512;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) throw new Error('sem canvas');
+    ctx.drawImage(imagem.fonte, (imagem.largura - lado) / 2, (imagem.altura - lado) / 2, lado, lado, 0, 0, 512, 512);
+    const blob = await new Promise((ok) => canvas.toBlob(ok, 'image/jpeg', 0.86));
+    if (!blob?.size) throw new Error('sem jpeg');
+    return blob;
+  } finally {
+    imagem.soltar();
+  }
+}
+
 /** Foto de perfil: escolhida da galeria, recortada em quadrado e reduzida a 512 px. Fica só no iPhone. */
 export function escolherFoto() {
   return new Promise((resolve) => {
     const entrada = document.createElement('input');
     entrada.type = 'file';
     entrada.accept = 'image/*';
-    entrada.onchange = async () => {
-      const arquivo = entrada.files?.[0];
-      if (!arquivo) return resolve(false);
-      const imagem = await createImageBitmap(arquivo);
-      const lado = Math.min(imagem.width, imagem.height);
-      const canvas = document.createElement('canvas');
-      canvas.width = canvas.height = 512;
-      canvas.getContext('2d').drawImage(imagem, (imagem.width - lado) / 2, (imagem.height - lado) / 2, lado, lado, 0, 0, 512, 512);
-      const blob = await new Promise((ok) => canvas.toBlob(ok, 'image/jpeg', 0.86));
-      await gravar('foto', blob);
-      await gravar('fotoVersao', String(Date.now()));
-      resolve(true);
+    entrada.tabIndex = -1;
+    entrada.setAttribute('aria-hidden', 'true');
+    entrada.style.cssText = 'position:fixed;left:-9999px;top:0;width:1px;height:1px;opacity:0';
+    // No DOM até o fim: o Safari pode descartar um <input> solto antes do change chegar.
+    document.body.append(entrada);
+    let terminou = false;
+    const terminar = (valor) => {
+      if (terminou) return;
+      terminou = true;
+      entrada.remove();
+      resolve(valor);
     };
+    entrada.addEventListener('cancel', () => terminar(false));
+    entrada.addEventListener('change', async () => {
+      const arquivo = entrada.files?.[0];
+      if (!arquivo) return terminar(false);
+      try {
+        const blob = await comPrazo(reduzirFoto(arquivo), PRAZO_FOTO_MS);
+        // Bytes, não Blob: o WebKit às vezes recusa gravar um Blob no IndexedDB (e a foto não ficava).
+        await gravar('foto', { bytes: await blob.arrayBuffer(), tipo: blob.type || 'image/jpeg' });
+        await gravar('fotoVersao', String(Date.now()));
+        terminar(true);
+      } catch {
+        avisar(FALHA_FOTO);
+        terminar(false);
+      } finally {
+        entrada.value = ''; // escolher a mesma foto de novo volta a disparar o change
+      }
+    });
+    entrada.value = '';
     entrada.click();
   });
 }
@@ -141,7 +211,9 @@ export function escolherFoto() {
 let urlFoto;
 let versaoFoto;
 export async function fotoOuIniciais(iniciais) {
-  const foto = await ler('foto');
+  const guardada = await ler('foto');
+  // Fotos antigas foram gravadas como Blob; as novas, como { bytes, tipo }.
+  const foto = guardada instanceof Blob ? guardada : guardada?.bytes ? new Blob([guardada.bytes], { type: guardada.tipo }) : null;
   if (!foto) return html`${iniciais}`;
   const versao = (await ler('fotoVersao')) ?? `${foto.size}|${foto.type}`;
   if (!urlFoto || versao !== versaoFoto) {

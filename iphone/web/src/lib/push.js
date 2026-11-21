@@ -6,6 +6,7 @@ import { aulaValeNoDia } from './dominio/academico.js';
 import { atividadesDaSemana, planejarAvisos } from './dominio/classroom.js';
 import { dataISO } from './dominio/formatos.js';
 import { REFEICOES } from './dominio/refeicoes.js';
+import { semAulaPorFeriado } from './dominio/feriados.js';
 import { aulasDoProfessor, semChamada } from './dominio/professor.js';
 
 const SEMANA = 7 * 1440;
@@ -43,7 +44,18 @@ export function montarAgenda({ prefs, aulas = [], atividades = [], agora = new D
   const unicos = prefs.avisos.classroom
     ? planejarAvisos(atividades, agora).map((a) => ({ em: Math.floor(a.quando.getTime() / 60000), t: 'classroom', r: dataISO(a.quando) }))
     : [];
-  return { semanais, unicos };
+  // Feriados dos próximos 120 dias, como intervalos de minutos absolutos (UTC): o Worker não manda aviso de aula neles.
+  // Só datas públicas de feriado; nada da pessoa.
+  const pausas = [];
+  if (semanais.some((e) => e.t === 'aula')) {
+    for (let i = 0; i < 120 && pausas.length < 30; i++) {
+      const dia = new Date(agora.getFullYear(), agora.getMonth(), agora.getDate() + i);
+      if (!semAulaPorFeriado(dia)) continue;
+      const de = Math.floor(dia.getTime() / 60000);
+      pausas.push({ de, ate: Math.floor(new Date(dia.getFullYear(), dia.getMonth(), dia.getDate() + 1).getTime() / 60000) });
+    }
+  }
+  return { semanais, unicos, pausas };
 }
 
 function chaveParaBytes(b64url) {

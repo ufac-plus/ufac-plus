@@ -74,6 +74,12 @@ createServer((req, res) => {
           ? responder(200, fixture('portal_inicio.html'), 'https://portal.ufac.br/aluno/index.action')
           : responder(200, fixture('public/portal_login.html'), 'https://portal.ufac.br/aluno/login.action?error=');
       }
+      // Biblioteca: pesquisa pública, abre sem o login do Portal. "nada" devolve a busca sem resultado.
+      if (q.startsWith('/biblioteca/pesquisa/resultado.action')) {
+        const termo = url.searchParams.get('keyword') ?? '';
+        return responder(200, fixture(termo === 'nada' ? 'biblioteca_resultado_vazio.html' : 'biblioteca_resultado.html'), `https://portal.ufac.br${q}`);
+      }
+      if (q.startsWith('/biblioteca/ajax/exemplar/itens.action')) return responder(200, fixture('biblioteca_itens.html'), `https://portal.ufac.br${q}`);
       if (!estado.portal) return responder(200, fixture('public/portal_login.html'), 'https://portal.ufac.br/aluno/login.action');
       const final = `https://portal.ufac.br${q}`;
       if (q.startsWith('/aluno/index.action')) return responder(200, fixture('portal_inicio.html'), final);

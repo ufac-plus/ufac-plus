@@ -386,3 +386,54 @@ test('sem eTICKET pelo cartão: cancelar mantém a etapa; senha errada no Conect
   await entrar(page);
   await expect(page.getByRole('button', { name: 'Conectar o eTICKET' })).toHaveCount(0);
 });
+
+test('Biblioteca: buscar no acervo e ver os exemplares, sem precisar do login do Portal', async ({ page }) => {
+  const worker = await workerFalso(page);
+  await entrar(page);
+  await page.request.get(`${WORKER}/__expirar-portal`); // a pesquisa é pública
+  await page.getByRole('button', { name: 'Menu' }).click();
+  await page.getByRole('button', { name: /Biblioteca/ }).click();
+  await expect(page.getByRole('heading', { name: 'Biblioteca' })).toBeVisible();
+  await expect(page.getByText('Pesquise no acervo')).toBeVisible();
+  const antes = (await worker.pedidos()).length;
+  await page.getByLabel('Título, autor ou assunto').fill('direito civil');
+  await page.getByLabel('Título, autor ou assunto').press('Enter');
+  const titulo = page.getByRole('button', { name: /Curso de direito civil de exemplo: parte geral/ });
+  await expect(titulo).toBeVisible();
+  await expect(page.getByText('2 títulos')).toBeVisible();
+  await expect(titulo).toContainText('SOUZA, Maria de Teste. · 2019');
+  await expect(titulo).toContainText('Biblioteca Central');
+  await print(page, '40-biblioteca-resultado');
+  await titulo.click();
+  const folha = page.getByRole('dialog');
+  await expect(folha.getByText('2 disponíveis · 3 no total')).toBeVisible();
+  await expect(folha.getByText('CLA 00001-1').first()).toBeVisible();
+  await expect(folha.getByText('Emprestado')).toBeVisible();
+  await print(page, '41-biblioteca-exemplares');
+  await folha.getByRole('button', { name: 'Fechar' }).click();
+  // A mesma busca de novo vem do cache: nenhum pedido novo à Ufac.
+  await page.getByRole('button', { name: 'Buscar' }).click();
+  await expect(titulo).toBeVisible();
+  const pedidos = (await worker.pedidos()).slice(antes).filter((p) => p.includes('/biblioteca/'));
+  expect(pedidos.filter((p) => p.includes('resultado.action'))).toHaveLength(1);
+  expect(pedidos.filter((p) => p.includes('itens.action'))).toHaveLength(1);
+  // Busca sem resultado: estado vazio em linguagem humana.
+  await page.getByLabel('Título, autor ou assunto').fill('nada');
+  await page.getByRole('button', { name: 'Buscar' }).click();
+  await expect(page.getByText('Nada encontrado')).toBeVisible();
+});
+
+test('Créditos: quem faz o UFAC+, aberto pelas Configurações', async ({ page }) => {
+  await workerFalso(page);
+  await entrar(page);
+  await page.goto('/#/configuracoes');
+  await page.getByRole('button', { name: /Créditos/ }).click();
+  await expect(page.getByRole('heading', { name: 'Créditos' })).toBeVisible();
+  await expect(page.getByText('Arthur Henrique de Souza Cavalcante Ferreira')).toBeVisible();
+  await expect(page.getByText('Colaborador · versão iPhone')).toBeVisible();
+  await print(page, '42-creditos', { fullPage: true });
+  await page.emulateMedia({ colorScheme: 'dark' });
+  await print(page, '43-creditos-escuro', { fullPage: true });
+  await page.getByRole('button', { name: 'Voltar' }).click();
+  await expect(page.getByRole('heading', { name: 'Configurações' })).toBeVisible();
+});

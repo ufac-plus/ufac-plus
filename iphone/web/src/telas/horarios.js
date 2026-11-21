@@ -1,14 +1,38 @@
 import { ler } from '../lib/armazenamento.js';
 import { atualizarHorarios, atualizarProfessor } from '../lib/dados.js';
 import { aulaValeNoDia } from '../lib/dominio/academico.js';
+import { gerarIcs } from '../lib/dominio/agenda.js';
 import { DIAS, MESES, diaDaSemana, formatarHoraMin, rotuloAtualizado } from '../lib/dominio/formatos.js';
 import { aulasDoProfessor } from '../lib/dominio/professor.js';
 import { sincronizarAgenda } from '../lib/push.js';
-import { barraCompacta, botaoRedondo, cabecalho, esqueleto, html, montar, notaRodape, remontar, puxarParaAtualizar, vazio } from '../ui/componentes.js';
+import { avisar, barraCompacta, botaoRedondo, cabecalho, ic, esqueleto, html, montar, notaRodape, remontar, puxarParaAtualizar, vazio } from '../ui/componentes.js';
 import { avisoSemEticket, faixaExpirada, faixaFalha, fraseDeFalha, expirado } from './comum.js';
+
+/** Entrega o .ics pela folha de compartilhar do iPhone; sem ela, baixa pelo link. Nada sai do aparelho. */
+async function entregarIcs(texto) {
+  const nome = 'aulas-ufac-plus.ics';
+  const blob = new Blob([texto], { type: 'text/calendar;charset=utf-8' });
+  const file = new File([blob], nome, { type: 'text/calendar' });
+  if (navigator.canShare?.({ files: [file] })) {
+    try {
+      await navigator.share({ files: [file] });
+      return true;
+    } catch (e) {
+      if (e?.name === 'AbortError') return false; // a pessoa fechou a folha
+      /* NotAllowedError e afins: tenta o link */
+    }
+  }
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = nome;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 10000);
+  return true;
+}
 
 export default async function horarios(tela, { ir, perfil, acoes }) {
   let falha = '';
+  let aulasAtuais = null; // guardadas no desenho, para o toque gerar o .ics sem esperar (o Safari exige o toque "quente")
   const professor = perfil === 'professor';
 
   async function desenhar(carregando = false) {
@@ -16,6 +40,7 @@ export default async function horarios(tela, { ir, perfil, acoes }) {
     const hoje = diaDaSemana(agora);
     const dados = professor ? await ler('professor') : await ler('horarios');
     const aulas = professor ? aulasDoProfessor(dados?.turmas ?? []) : dados?.aulas;
+    aulasAtuais = aulas;
     // Cada dia da semana a partir de hoje, com a data real (para respeitar o período da turma).
     const dias = Array.from({ length: 7 }, (_, i) => {
       const data = new Date(agora.getFullYear(), agora.getMonth(), agora.getDate() + i);
@@ -37,6 +62,7 @@ export default async function horarios(tela, { ir, perfil, acoes }) {
               ? lista.map((a) => html`<div class="aula"><div class="hora">${formatarHoraMin(a.inicioMin)}<small>${formatarHoraMin(a.fimMin)}</small></div><div class="cresce forte">${a.disciplina}</div></div>`)
               : html`<div class="apoio">Sem aula hoje</div>`}
           </section>`)}
+      ${aulas?.length ? html`<button class="botao claro largo tocavel" data-acao="agenda">${ic('calendario')} Adicionar ao Calendário</button>` : ''}
       ${aulas ? notaRodape('O portal não informa a sala das aulas.') : ''}
     `);
   }
@@ -45,6 +71,13 @@ export default async function horarios(tela, { ir, perfil, acoes }) {
   barraCompacta(tela, 'Horários');
   acoes.menu = () => ir('menu');
   acoes['entrar-portal'] = () => ir('login/portal');
+  acoes.agenda = async () => {
+    const { texto, eventos, prazoPadrao } = gerarIcs(aulasAtuais ?? []);
+    if (!eventos) return avisar('Não há aulas para adicionar ao Calendário.');
+    if (!(await entregarIcs(texto))) return;
+    // Sem o fim do período no portal, as aulas repetem por 4 meses.
+    if (prazoPadrao) avisar('As aulas se repetem por 4 meses, porque o portal não informa o fim do período.');
+  };
   const tem = professor ? await ler('professor') : await ler('horarios');
   await desenhar(!tem);
 

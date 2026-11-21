@@ -65,7 +65,9 @@ export async function atualizarCardapio({ forcar = false } = {}) {
       if (itensDoCardapio(t).length && !itensDoCardapio(textos[id]).length) textos[id] = t;
     }
   }
-  const c = { lidoEm: agoraISO(), textos, fonte };
+  // Guarda os textos do último dia anterior: num dia novo, texto igual ao de ontem lido cedo pode ser o de ontem.
+  const anterior = atual && !cardapioValeEm(atual, new Date()) ? { lidoEm: atual.lidoEm, textos: atual.textos } : atual?.anterior;
+  const c = { lidoEm: agoraISO(), textos, fonte, ...(anterior ? { anterior } : {}) };
   await gravar('cardapio', c);
   return c;
 }

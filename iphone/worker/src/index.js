@@ -3,9 +3,11 @@
 // Classroom: /google/* só troca e renova a autorização (ver src/google.js); o conteúdo vai do Google direto ao iPhone.
 import { cancelar, dispararAgendados, inscrever } from './agenda.js';
 import { desconectar, renovar, trocar } from './google.js';
+import { dentroDoLimite, respostaMuitosPedidos } from './limite.js';
+import { listaDeOrigens } from './origens.js';
 import { repassar } from './repasse.js';
 
-/** ORIGENS="https://ufac-plus.pages.dev,*.ufac-plus.pages.dev,http://localhost:5173" */
+/** ORIGENS="https://ufac-plus.pages.dev,*.ufac-plus.pages.dev" (+ ORIGENS_DEV só com DEV_LOCAL=1) */
 export function origemPermitida(origem, env) {
   if (!origem) return false;
   let host;
@@ -14,11 +16,7 @@ export function origemPermitida(origem, env) {
   } catch {
     return false;
   }
-  return (env.ORIGENS ?? '')
-    .split(',')
-    .map((o) => o.trim())
-    .filter(Boolean)
-    .some((o) => (o.startsWith('*.') ? host.protocol === 'https:' && host.hostname.endsWith(o.slice(1)) : o === origem));
+  return listaDeOrigens(env).some((o) => (o.startsWith('*.') ? host.protocol === 'https:' && host.hostname.endsWith(o.slice(1)) : o === origem));
 }
 
 function comCors(resposta, origem) {
@@ -57,7 +55,9 @@ export default {
     }
 
     let resposta;
-    if (url.pathname === '/push/chave') {
+    if (url.pathname.startsWith('/google/') && !(await dentroDoLimite(pedido, env))) {
+      resposta = respostaMuitosPedidos();
+    } else if (url.pathname === '/push/chave') {
       resposta = Response.json({ chave: env.VAPID_PUBLICA });
     } else if (url.pathname === '/push/inscrever' && pedido.method === 'POST') {
       resposta = await inscrever(env, await lerJson(pedido));

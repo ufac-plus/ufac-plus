@@ -42,7 +42,7 @@ Versão do UFAC+ para iPhone, como app da web instalável (PWA). Fica na pasta `
 cd iphone
 npm install
 node worker/scripts/gerar-chaves.mjs --dev   # cria worker/.dev.vars (fora do git)
-npm run dev:worker                            # Worker em http://localhost:8787
+npm run dev:worker                            # Worker em http://localhost:8787 (liga DEV_LOCAL=1: aceita localhost)
 npm run dev:web                               # PWA em http://localhost:5173
 ```
 
@@ -120,7 +120,7 @@ Bug ou ideia nova: `gh issue create` com as etiquetas certas. Criar, comentar ou
 3. Classroom: ligar "Atividades do Classroom" em Configurações › Notificações e conferir o aviso das 19h e o selo no ícone.
 4. Testar Notas, Relatórios (PDF) e o QR na catraca do RU.
 5. Avisar o Arthur do formato novo do cardápio no app Android.
-6. Opcional: limite de pedidos por IP em `/google/*` no Worker; tirar `localhost` de `ORIGENS` em produção.
+6. Feito no código (issue #12), falta publicar o Worker: limite de 30 pedidos por minuto por IP em `/google/*` (binding `LIMITE_GOOGLE` de Rate Limiting do `wrangler.toml`; se faltar, um contador em memória por isolado, só melhor-esforço) com resposta 429 "Espere um minuto"; e `localhost` fora de `ORIGENS`: os endereços locais ficam em `ORIGENS_DEV` e só valem com `DEV_LOCAL=1`, que o `npm run dev -w worker` passa (`wrangler dev --var DEV_LOCAL:1`). A volta do Google para localhost pede `DEV_LOCAL=1` e `GOOGLE_DEV=1`.
 
 ## Testar no iPhone com login real
 

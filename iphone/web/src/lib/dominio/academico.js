@@ -1,8 +1,24 @@
 // Regras do Portal. Porte de lib/data/academico.dart.
 import { deDataISO, diaDaSemana, formatarHoraMin, soData } from './formatos.js';
+import { semAulaPorFeriado } from './feriados.js';
 
-/** Faltas: pode ter até 16 em cada disciplina; a 17ª reprova (decisão de Arthur). */
+/**
+ * Faltas: numa disciplina de 60 h pode ter até 16 e a 17ª reprova (decisão de Arthur).
+ * Vale sem a carga horária da disciplina, como estimativa.
+ */
 export const LIMITE_FALTAS = 16;
+
+/**
+ * Regimento Geral da Ufac, arts. 314, I, e 320, II: reprova quem não tem 75% de frequência
+ * nas atividades programadas. O portal conta as faltas por hora-aula (uma por período da chamada,
+ * e 2 h de aula são 2 períodos). As 16 de Arthur numa de 60 h equivalem a 25% de 64 aulas
+ * programadas, ou seja, a carga × 16/15 (16 semanas para um crédito de 15 h). Assim o limite
+ * escala com a carga: 30 h → 8, 45 h → 12, 60 h → 16, 90 h → 24.
+ */
+export const aulasProgramadas = (cargaHoraria) => (cargaHoraria * LIMITE_FALTAS) / 60 / 0.25;
+// Para baixo: com uma carga que não é múltipla de 15 h (ex.: 40 h), arredondar para cima deixaria a última
+// falta "permitida" abaixo dos 75%. Nas cargas comuns (30, 45, 60, 75, 90 h) dá o mesmo número.
+export const faltasPermitidas = (cargaHoraria) => Math.floor((cargaHoraria * LIMITE_FALTAS) / 60 + 1e-9);
 
 export const primeiroNome = (nome) => nome.split(' ')[0];
 
@@ -22,11 +38,12 @@ export function aulaValeNoDia(aula, dia) {
 
 const DIAS_CURTOS = ['segunda', 'terça', 'quarta', 'quinta', 'sexta', 'sábado', 'domingo'];
 
-/** A aula em andamento ou a próxima nos próximos 7 dias. Null se não houver nenhuma. */
+/** A aula em andamento ou a próxima nos próximos 7 dias, pulando feriados. Null se não houver nenhuma. */
 export function proximaAula(aulas, agora) {
   const minutos = agora.getHours() * 60 + agora.getMinutes();
   for (let d = 0; d < 7; d++) {
     const dia = new Date(agora.getFullYear(), agora.getMonth(), agora.getDate() + d);
+    if (semAulaPorFeriado(dia)) continue; // a faixa diz "Sem aulas": o cartão não pode dizer "em andamento"
     const doDia = aulas
       .filter((a) => a.diaSemana === diaDaSemana(dia) && aulaValeNoDia(a, dia))
       .sort((a, b) => a.inicioMin - b.inicioMin);
@@ -51,17 +68,23 @@ export function semestreCurto(semestre) {
 }
 
 /**
- * Reprova quem passa de `percentual` da carga horária. Sem a carga, usa `permitidasSemCarga`.
- * O aviso começa em 75% das faltas permitidas. Null quando o portal ainda não informa faltas.
+ * Reprova quem passa das faltas permitidas pela carga horária (regra acima). Sem a carga, usa
+ * `permitidasSemCarga` e marca `estimado`. `percentual` troca a regra por floor(carga × percentual).
+ * O aviso começa em 75% das faltas permitidas. `frequencia` (0 a 100, arredondada para baixo, para
+ * nunca parecer maior do que é) só existe com a carga. Null quando o portal ainda não informa faltas.
  */
-export function situacaoFaltas(faltas, { cargaHoraria = null, percentual = 0, permitidasSemCarga = LIMITE_FALTAS } = {}) {
+export function situacaoFaltas(faltas, { cargaHoraria = null, percentual = null, permitidasSemCarga = LIMITE_FALTAS } = {}) {
   const t = String(faltas ?? '').trim();
   if (!/^\d+$/.test(t)) return null;
   const n = Number(t);
-  const permitidas = cargaHoraria == null ? permitidasSemCarga : Math.floor(cargaHoraria * percentual);
+  const carga = Number(cargaHoraria) > 0 ? Number(cargaHoraria) : null;
+  const permitidas = carga == null ? permitidasSemCarga : percentual != null ? Math.floor(carga * percentual) : faltasPermitidas(carga);
   const aviso = Math.ceil(permitidas * 0.75);
   const nivel = n > permitidas ? 'limite' : n >= aviso ? 'atencao' : 'tranquilo';
-  return { faltas: n, permitidas, nivel, estimado: cargaHoraria == null };
+  // Mesma base do limite: com as faltas permitidas, a frequência fica em 75% exatos.
+  const base = carga == null ? null : percentual != null ? carga : aulasProgramadas(carga);
+  const frequencia = base == null ? null : Math.max(0, Math.floor(((base - n) / base) * 100 + 1e-9));
+  return { faltas: n, permitidas, nivel, estimado: carga == null, cargaHoraria: carga, frequencia };
 }
 
 /** O quadro de horários e a lista de notas escrevem o nome com detalhes diferentes. */

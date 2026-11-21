@@ -48,8 +48,11 @@ function listaOffline() {
       };
       andar(dist);
       const lista = arquivos.filter((a) => !a.endsWith('sw.js') && !a.endsWith('arquivos.json') && !a.includes('/splash/'));
+      // /privacidade/ e /instalar/ também pelo endereço da pasta, que é o que o app abre: assim abrem offline
+      // (o service worker procura a página pelo endereço exato; o .../index.html redireciona no Pages).
+      const pastas = PAGINAS.map((p) => `/${p}/`).filter((p) => lista.includes(`${p}index.html`));
       const versao = Date.now().toString(36);
-      writeFileSync(join(dist, 'arquivos.json'), JSON.stringify({ versao, arquivos: ['/', ...lista] }));
+      writeFileSync(join(dist, 'arquivos.json'), JSON.stringify({ versao, arquivos: ['/', ...pastas, ...lista] }));
     },
   };
 }

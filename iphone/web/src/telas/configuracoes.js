@@ -51,7 +51,7 @@ export default async function configuracoes(tela, { voltar, ir, perfil, acoes, p
         ${cabecalhoSecao('Avisos e notificações', 'Lembretes no iPhone antes das aulas e das refeições.')}
         ${interruptor('feriados', prefs.feriados, 'Avisar sobre feriados', 'Na véspera, na tela Início')}
         ${!pushOk
-          ? html`<div style="padding:12px 16px">${faixa({ icone: 'celular', titulo: 'Instale o app na Tela de Início', texto: 'O iPhone só manda notificações para apps instalados (iOS 16.4 ou mais novo).' })}<a class="botao claro largo tocavel" style="margin-top:10px" href="/instalar/">Como instalar</a></div>`
+          ? html`<div style="padding:12px 16px">${instalado() ? faixa({ icone: 'celular', titulo: 'Notificações indisponíveis neste iPhone', texto: 'O iPhone só manda notificações para apps da web no iOS 16.4 ou mais novo.' }) : faixa({ icone: 'celular', titulo: 'Instale o app na Tela de Início', texto: 'O iPhone só manda notificações para apps instalados (iOS 16.4 ou mais novo).' })}${!instalado() ? html`<a class="botao claro largo tocavel" style="margin-top:10px" href="/instalar/">Como instalar</a>` : ''}</div>`
           : html`
             ${!permitido ? html`<div style="padding:12px 16px"><button class="botao largo tocavel" data-acao="permitir">${ic('sino')} Permitir notificações</button></div>` : ''}
             ${interruptor('aulas', prefs.avisos.aulas, 'Próxima aula', `${ANTECEDENCIA_MIN} min antes de cada aula`)}
@@ -63,8 +63,9 @@ export default async function configuracoes(tela, { voltar, ir, perfil, acoes, p
         ${classroomConectado() ? item({ icone: 'quadro', titulo: 'Desconectar o Classroom', sub: 'Tira o acesso do app à sua conta do Google', acao: 'desconectar-classroom' }) : ''}
         ${item({ icone: 'info', titulo: 'Relatar um problema', sub: 'Manda os últimos erros do app, sem seus dados', acao: 'relatar' })}
         ${item({ icone: 'atualizar', titulo: 'Limpar dados salvos', sub: 'Lê tudo de novo da Ufac; não sai da conta', acao: 'limpar' })}
-        ${item({ icone: 'cadeado', titulo: 'Privacidade', href: '/privacidade/' })}
-        ${item({ icone: 'celular', titulo: 'Como instalar no iPhone', href: '/instalar/' })}
+        ${item({ icone: 'cadeado', titulo: 'Privacidade', href: '/privacidade/#app' })}
+        ${!instalado() ? item({ icone: 'celular', titulo: 'Como instalar no iPhone', href: '/instalar/' }) : ''}
+        ${item({ icone: 'grupo', titulo: 'Créditos', sub: 'Quem faz o UFAC+ e o que cada um fez', acao: 'creditos' })}
         ${item({ icone: 'escola', titulo: 'Sobre o UFAC+', sub: `Versão ${VERSAO} · App independente, feito por um aluno. Não é um aplicativo oficial da Ufac.` })}
       </section>
       <button class="botao perigo largo tocavel" data-acao="sair">${ic('sair')} Sair da conta</button>
@@ -139,10 +140,11 @@ export default async function configuracoes(tela, { voltar, ir, perfil, acoes, p
     desenhar();
   };
   acoes.relatar = () => ir('relatar/Configurações');
+  acoes.creditos = () => ir('creditos');
   acoes.limpar = async () => {
     const ok = await confirmar({ titulo: 'Limpar dados salvos?', texto: 'Apaga notas, horários, saldo e cardápio deste iPhone. Você continua na conta e tudo é lido de novo da Ufac.', sim: 'Limpar' });
     if (!ok) return;
-    for (const k of ['ru', 'cardapio', 'identificacao', 'horarios', 'notas', 'historico', 'classroom', 'professor', 'idInterno', 'urlMaisRelatorios', 'urlComunicacoes', 'diagnosticoPortal', 'registro']) await apagar(k);
+    for (const k of ['ru', 'cardapio', 'identificacao', 'horarios', 'notas', 'historico', 'classroom', 'professor', 'idInterno', 'urlMaisRelatorios', 'urlComunicacoes', 'diagnosticoPortal', 'registro', 'bibliotecaBuscas', 'bibliotecaExemplares']) await apagar(k);
     avisar('Dados apagados. Tudo será lido de novo.');
   };
   acoes['esquecer-senha'] = async () => {

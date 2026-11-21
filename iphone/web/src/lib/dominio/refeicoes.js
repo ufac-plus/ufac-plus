@@ -10,10 +10,14 @@ export const REFEICOES = [
 
 export const refeicaoPorId = (id) => REFEICOES.find((r) => r.id === id);
 
-/** A refeição em andamento ou a próxima. Depois do jantar, volta para o café. */
+/**
+ * A refeição em andamento ou a próxima. Depois do jantar, é o café de amanhã:
+ * vem com `amanha: true` (quem só usa .id/.nome continua funcionando), para ninguém mostrar o café de hoje, que já passou.
+ */
 export function proximaRefeicao(agora) {
   const minutos = agora.getHours() * 60 + agora.getMinutes();
-  return REFEICOES.find((r) => minutos < r.fimMin) ?? REFEICOES[0];
+  const hoje = REFEICOES.find((r) => minutos < r.fimMin);
+  return hoje ? { ...hoje, amanha: false } : { ...REFEICOES[0], amanha: true };
 }
 
 const SAUDACAO = /^(bo[am]\s+(café|cafe|almoço|almoco|jantar|janta|apetite|refeição|refeicao)|tenham?\s+um)/i;
@@ -52,6 +56,26 @@ export function itensDoCardapio(texto) {
 /** Cardápio lido num dia: { lidoEm (ISO), textos: { cafe, almoco, jantar } }. A página não tem data. */
 export const cardapioValeEm = (c, agora) => !!c && mesmoDia(new Date(c.lidoEm), agora);
 
-/** Vale ler de novo se não há cardápio de hoje ou se falta alguma refeição. */
+const assinatura = (texto) => itensDoCardapio(texto).join('|').toLowerCase();
+
+/**
+ * De manhã cedo o eTICKET ainda pode mostrar o texto de ontem. A refeição fica em dúvida quando o texto é igual ao
+ * último lido num dia anterior (`c.anterior`) e foi lido antes de ela começar. Lido depois do início, vale (o RU
+ * repete pratos, sobretudo no café, e a essa altura o eTICKET já publicou).
+ */
+export function refeicaoRepetida(c, id) {
+  const r = refeicaoPorId(id);
+  if (!c?.anterior || !r) return false;
+  const lido = new Date(c.lidoEm);
+  if (mesmoDia(new Date(c.anterior.lidoEm), lido)) return false;
+  const atual = assinatura(c.textos?.[id]);
+  if (!atual || atual !== assinatura(c.anterior.textos?.[id])) return false;
+  return lido.getHours() * 60 + lido.getMinutes() < r.inicioMin;
+}
+
+export const AVISO_REPETIDO = 'Igual ao de ontem; o eTICKET pode ainda não ter atualizado.';
+
+/** Vale ler de novo se não há cardápio de hoje, se falta alguma refeição ou se alguma ainda pode ser a de ontem. */
 export const cardapioPendente = (c, agora) =>
-  !cardapioValeEm(c, agora) || REFEICOES.some((r) => itensDoCardapio(c.textos[r.id]).length === 0);
+  !cardapioValeEm(c, agora) ||
+  REFEICOES.some((r) => itensDoCardapio(c.textos[r.id]).length === 0 || refeicaoRepetida(c, r.id));

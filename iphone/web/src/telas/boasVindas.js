@@ -21,7 +21,7 @@ export default function boasVindas(tela, { ir, acoes }) {
       </div>
       <button class="botao largo tocavel" data-acao="aluno">${ic('escola')} Sou aluno</button>
       <button class="botao largo claro tocavel" data-acao="professor">Sou professor</button>
-      <div class="nota-rodape">App independente, feito por um aluno. Não é um aplicativo oficial da Ufac. <a href="/privacidade/" style="text-decoration:underline">Privacidade</a></div>
+      <div class="nota-rodape">App independente, feito por um aluno. Não é um aplicativo oficial da Ufac. <a href="/privacidade/#app" style="text-decoration:underline">Privacidade</a></div>
     </div>`);
   acoes.aluno = () => ir('login/aluno');
   acoes.professor = () => ir('login/professor');

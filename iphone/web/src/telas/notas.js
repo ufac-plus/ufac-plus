@@ -1,17 +1,22 @@
 import { ler } from '../lib/armazenamento.js';
 import { atualizarNotas } from '../lib/dados.js';
-import { LIMITE_FALTAS, situacaoApresentavel, situacaoFaltas, totalDaNota } from '../lib/dominio/academico.js';
+import { situacaoApresentavel, situacaoFaltas, totalDaNota } from '../lib/dominio/academico.js';
 import { rotuloAtualizado } from '../lib/dominio/formatos.js';
 import { barraCompacta, botaoRedondo, cabecalho, html, montar, notaRodape, remontar, puxarParaAtualizar, vazio } from '../ui/componentes.js';
 import { expirado, faixaExpirada, faixaFalha, fraseDeFalha } from './comum.js';
 
 function blocoFaltas(d) {
-  const s = situacaoFaltas(d.faltas, { cargaHoraria: null, permitidasSemCarga: LIMITE_FALTAS });
+  const s = situacaoFaltas(d.faltas, { cargaHoraria: d.cargaHoraria });
   if (!s) return '';
   const largura = Math.min(100, (s.faltas / (s.permitidas + 1)) * 100);
   const texto = s.nivel === 'limite' ? `${s.faltas} faltas: passou do limite de ${s.permitidas}` : `${s.faltas} de ${s.permitidas} faltas permitidas`;
+  // Sem a carga horária da turma, o limite é o de uma disciplina de 60 h: deixar claro que é estimativa.
+  const detalhe = s.estimado
+    ? 'Estimativa: não consegui ler a carga horária desta disciplina.'
+    : `Frequência ${s.frequencia}% · carga de ${s.cargaHoraria} h · a ${s.permitidas + 1}ª falta reprova`;
   return html`<div style="margin-top:10px"><div class="linha"><span class="apoio cresce">${texto}</span>${s.nivel !== 'tranquilo' ? html`<span class="selo ${s.nivel === 'limite' ? 'perigo' : ''}">${s.nivel === 'limite' ? 'Passou do limite' : 'Perto do limite'}</span>` : ''}</div>
-    <div class="barra-faltas ${s.nivel}" role="meter" aria-valuemin="0" aria-valuemax="${s.permitidas + 1}" aria-valuenow="${s.faltas}" aria-valuetext="${s.faltas} faltas de ${s.permitidas} permitidas" aria-label="Faltas"><div style="width:${largura}%"></div></div></div>`;
+    <div class="barra-faltas ${s.nivel}" role="meter" aria-valuemin="0" aria-valuemax="${s.permitidas + 1}" aria-valuenow="${s.faltas}" aria-valuetext="${s.faltas} faltas de ${s.permitidas} permitidas${s.estimado ? ', estimativa' : `, frequência ${s.frequencia}%`}" aria-label="Faltas"><div style="width:${largura}%"></div></div>
+    <div class="apoio" style="margin-top:6px">${detalhe}</div></div>`;
 }
 
 /** "(50.00%)" do portal vira "50%"; "(12,50%)" fica "12,5%". */
@@ -54,7 +59,7 @@ export default async function notas(tela, { ir, acoes }) {
                     ${!d.notas.length && !d.resumo.length ? html`<div class="apoio" style="margin-top:8px">O portal ainda não publicou o quadro de notas.</div>` : ''}`
                 : ''}
             </section>`)}
-      ${n ? notaRodape(`Até ${LIMITE_FALTAS} faltas são permitidas; a ${LIMITE_FALTAS + 1}ª reprova.`) : ''}
+      ${n ? notaRodape('É preciso ter 75% de frequência. As faltas permitidas dependem da carga horária de cada disciplina: 16 numa de 60 h, 8 numa de 30 h.') : ''}
     `);
   }
 

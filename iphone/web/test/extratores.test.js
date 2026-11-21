@@ -172,17 +172,25 @@ describe('Portal', () => {
 describe('próxima aula', () => {
   const seg = { disciplina: 'Seg', diaSemana: 1, inicioMin: 19 * 60, fimMin: 22 * 60 + 40 };
   const sab = { disciplina: 'Sab', diaSemana: 6, inicioMin: 8 * 60, fimMin: 12 * 60 };
-  // 2026-11-02 é segunda.
+  // 2026-11-09 é segunda (a de 2/11 é Finados).
   test('hoje, perto', () => {
-    const p = proximaAula([seg, sab], new Date(2026, 10, 2, 18, 40));
+    const p = proximaAula([seg, sab], new Date(2026, 10, 9, 18, 40));
     expect(p.aula.disciplina).toBe('Seg');
     expect(p.rotulo).toBe('começa em 20 min');
   });
   test('rótulos', () => {
-    expect(proximaAula([seg], new Date(2026, 10, 2, 10)).rotulo).toBe('hoje às 19h');
-    expect(proximaAula([seg], new Date(2026, 10, 2, 20)).rotulo).toBe('em andamento');
-    expect(proximaAula([seg, sab], new Date(2026, 10, 2, 23)).rotulo).toBe('sábado às 8h');
-    expect(proximaAula([sab], new Date(2026, 10, 6, 12)).rotulo).toBe('amanhã às 8h');
+    expect(proximaAula([seg], new Date(2026, 10, 9, 10)).rotulo).toBe('hoje às 19h');
+    expect(proximaAula([seg], new Date(2026, 10, 9, 20)).rotulo).toBe('em andamento');
+    expect(proximaAula([seg, sab], new Date(2026, 10, 9, 23)).rotulo).toBe('sábado às 8h');
+    expect(proximaAula([sab], new Date(2026, 10, 13, 12)).rotulo).toBe('amanhã às 8h');
+  });
+  test('feriado não tem aula: pula para o próximo dia com aula', () => {
+    // 2/11/2026 (segunda) é Finados: nada de "em andamento" com a faixa "Sem aulas".
+    const p = proximaAula([seg, sab], new Date(2026, 10, 2, 20));
+    expect(p.aula.disciplina).toBe('Sab');
+    expect(p.rotulo).toBe('sábado às 8h');
+    // Ponto facultativo (Carnaval, 8/2/2027, segunda) não é pulado: a faixa pede para conferir.
+    expect(proximaAula([seg], new Date(2027, 1, 8, 10)).rotulo).toBe('hoje às 19h');
   });
   test('fora do período da turma não conta', () => {
     expect(proximaAula([{ ...seg, valeAte: '2026-10-01' }], new Date(2026, 10, 2, 10))).toBeNull();

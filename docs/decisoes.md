@@ -178,3 +178,19 @@ Prints dos temas: `flutter test test/visual_test.dart --update-goldens --tags vi
 - No login em duas etapas, cada etapa tem o botão **Pular** (não dá para pular as duas). Serve para quem só usa o RU, ou não usa o RU.
 - O que foi pulado fica guardado no cofre (`sistemas_pulados`) e o app não lê nada daquele sistema: nem ao abrir, nem ao voltar. No lugar dos dados aparece um convite para conectar ("eTICKET não conectado" no cartão do RU; "Portal do Aluno não conectado" na Início).
 - Para conectar depois: o próprio botão do cartão, ou **Configurações › Contas da Ufac**. Um login que dá certo naquele sistema desfaz o "pular". "Sair" apaga a escolha.
+
+## 2026-11-21: iPhone 1.5 — refeições depois do jantar (issue #21)
+- Depois do fim do jantar (19h30), a próxima refeição é o **café de amanhã** (`proximaRefeicao` devolve `amanha: true`). A página do eTICKET não tem data, então a Início mostra "Amanhã · Café · 6h30" e "O cardápio do café de amanhã ainda não saiu", nunca os itens do café de hoje. A aba RU abre no Jantar e diz que as refeições de hoje já foram servidas.
+- De manhã cedo o eTICKET pode ainda mostrar o texto de ontem. O app guarda a última leitura do dia anterior (`anterior`); num dia novo, uma refeição com texto igual ao de ontem, lido antes do início dela, é lida de novo a cada abertura e aparece com o aviso "Igual ao de ontem; o eTICKET pode ainda não ter atualizado." Lido depois do início, conta como certo (o café costuma repetir; o aviso nunca esconde os itens).
+
+## 2026-11-21: iPhone 1.5 — faltas pela carga horária de cada disciplina (issues #22 e #13)
+- O Regimento Geral da Ufac (arts. 314, I, e 320, II) reprova quem não tem 75% de frequência nas atividades programadas. O portal conta as faltas por hora-aula (uma por período da chamada).
+- Em vez de uma tabela com as disciplinas de todos os cursos, o app usa a "Carga Horária Semestral" da página da turma, lida uma vez por disciplina e guardada. Fórmula: permitidas = arredondar para baixo(carga × 16 / 60), que mantém a decisão de Arthur (60 h → 16, a 17ª reprova) e acompanha a carga: 30 h → 8, 45 h → 12, 75 h → 20, 90 h → 24. É o mesmo que 25% das aulas programadas, supondo 16 semanas por crédito de 15 h.
+- A frequência em porcentagem usa a mesma base, arredondada para baixo (75% exatos no limite). Sem a carga, o app usa 16 e diz que é estimativa.
+- Em aberto: nenhuma norma pública diz se a base é a carga (60 h → 15) ou as aulas programadas (64). Se a Prograd disser outra coisa, muda só `faltasPermitidas`/`aulasProgramadas` em `iphone/web/src/lib/dominio/academico.js`. O Android continua com 16 fixo.
+
+## 2026-11-21: iPhone 1.5 — feriados, avisos e Créditos
+- 17/11/2026 (Tratado de Petrópolis) foi comemorado em **19/11**, pela Lei estadual 2.126/2009 (Decreto 11.809/2025; Portaria TJAC 6569/2025). Em 2027 entraram só as datas fixas por lei que não dependem do decreto anual (23/01, 15/06, 05/09, 28/12); 20/01, 08/03 e 17/11 esperam o decreto de 2027 (issue #11).
+- Em feriado (não ponto facultativo) a Início pula a aula, o .ics do Calendário tira o dia (EXDATE) e o Worker não manda o aviso de aula: o iPhone manda as datas de feriado dos próximos 120 dias (dado público) como `pausas`.
+- Configurações › Créditos: quem faz o UFAC+ e o que cada um fez, com o mesmo texto do site.
+- Worker: limite de 30 pedidos/min por IP em `/google/*` (Rate Limiting do Workers, com contador em memória de reserva); `localhost` só com `DEV_LOCAL=1` (issue #12).

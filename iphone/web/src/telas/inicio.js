@@ -6,7 +6,7 @@ import { iniciais, primeiroNome, proximaAula, semestreCurto } from '../lib/domin
 import { atividadesDaSemana } from '../lib/dominio/classroom.js';
 import { avisoFeriado } from '../lib/dominio/feriados.js';
 import { formatarData, formatarHoraMin, formatarPrazoCurto, rotuloAtualizado } from '../lib/dominio/formatos.js';
-import { cardapioValeEm, itensDoCardapio, proximaRefeicao } from '../lib/dominio/refeicoes.js';
+import { AVISO_REPETIDO, cardapioValeEm, itensDoCardapio, proximaRefeicao, refeicaoRepetida } from '../lib/dominio/refeicoes.js';
 import { atualizarSelo, lerPrefs, sincronizarAgenda } from '../lib/push.js';
 import { abreFora, avisar, barraCompacta, botaoRedondo, cabecalho, esqueleto, faixa, html, ic, montar, puxarParaAtualizar, remontar, vazio, vibrarLeve } from '../ui/componentes.js';
 import { cartaoSaldo, escolherFoto, expirado, semEticket, faixaExpirada, faixaFalha, fotoOuIniciais, fraseDeFalha, soletrar } from './comum.js';
@@ -34,7 +34,9 @@ export default async function inicio(tela, { ir, acoes }) {
     const feriado = prefs.feriados ? avisoFeriado(agora) : null;
     const aula = horarios ? proximaAula(horarios.aulas, agora) : null;
     const refeicao = proximaRefeicao(agora);
-    const itens = cardapioValeEm(cardapio, agora) ? itensDoCardapio(cardapio.textos[refeicao.id]) : [];
+    // Depois do jantar é o café de amanhã: a página do eTICKET não tem data, então nunca mostra o café de hoje como o de amanhã.
+    const itens = !refeicao.amanha && cardapioValeEm(cardapio, agora) ? itensDoCardapio(cardapio.textos[refeicao.id]) : [];
+    const repetida = itens.length > 0 && refeicaoRepetida(cardapio, refeicao.id);
     const atividades = classroom ? atividadesDaSemana(classroom.atividades, agora) : [];
     const nome = ident?.nome ?? '';
     const semRu = await semEticket();
@@ -87,8 +89,9 @@ export default async function inicio(tela, { ir, acoes }) {
         <span class="icone verde">${ic('ru')}</span>
         <span class="cresce">
           <span class="rotulo" style="display:block">Próxima refeição</span>
-          <span class="titulo" style="display:block">${refeicao.nome} · ${formatarHoraMin(refeicao.inicioMin)}</span>
-          <span class="apoio sub">${itens.length ? itens.join(', ') : `O cardápio do ${refeicao.minusculo} ainda não saiu`}</span>
+          <span class="titulo" style="display:block">${refeicao.amanha ? 'Amanhã · ' : ''}${refeicao.nome} · ${formatarHoraMin(refeicao.inicioMin)}</span>
+          <span class="apoio sub">${itens.length ? itens.join(', ') : `O cardápio do ${refeicao.minusculo}${refeicao.amanha ? ' de amanhã' : ''} ainda não saiu`}</span>
+          ${repetida ? html`<span class="apoio" style="display:block">${AVISO_REPETIDO}</span>` : ''}
         </span>
         <span class="seta">${ic('seta')}</span>
       </button>
@@ -169,7 +172,11 @@ export default async function inicio(tela, { ir, acoes }) {
   acoes.menu = () => ir('menu');
   acoes.avisos = () => ir('configuracoes/avisos');
   acoes.qr = () => abrirQr();
-  acoes.refeicao = () => ir(`ru/${proximaRefeicao(new Date()).id}`);
+  // Depois do jantar, abre o RU sem escolher refeição: ele explica que o de amanhã ainda não saiu.
+  acoes.refeicao = () => {
+    const r = proximaRefeicao(new Date());
+    ir(r.amanha ? 'ru' : `ru/${r.id}`);
+  };
   acoes['entrar-eticket'] = () => ir('login/eticket');
   acoes['entrar-portal'] = () => ir('login/portal');
   acoes['entrar-ambos'] = () => ir('login/ambos');

@@ -24,7 +24,11 @@ export function validarAgenda(a) {
   const unicos = (Array.isArray(a?.unicos) ? a.unicos : [])
     .filter((e) => Number.isInteger(e?.em) && TIPOS.has(e.t) && referenciaValida(e.r))
     .map(({ em, t, r }) => ({ em, t, r }));
-  return { semanais: semanais.slice(0, MAX_EVENTOS), unicos: unicos.slice(0, MAX_EVENTOS) };
+  // Feriados em que não há aula: intervalos [de, ate) em minutos absolutos UTC.
+  const pausas = (Array.isArray(a?.pausas) ? a.pausas : [])
+    .filter((p) => Number.isInteger(p?.de) && Number.isInteger(p?.ate) && p.ate > p.de && p.ate - p.de <= 2 * 1440)
+    .map(({ de, ate }) => ({ de, ate }));
+  return { semanais: semanais.slice(0, MAX_EVENTOS), unicos: unicos.slice(0, MAX_EVENTOS), pausas: pausas.slice(0, 40) };
 }
 
 export function validarInscricao(i) {
@@ -46,7 +50,9 @@ export function eventosNaJanela(agenda, fimMs) {
   const achados = [];
   for (const e of agenda.unicos) if (e.em > fimMin - JANELA_MIN && e.em <= fimMin) achados.push(e);
   const semanaFim = minutoDaSemana(fimMs);
+  const emFeriado = (agenda.pausas ?? []).some((p) => fimMin >= p.de && fimMin < p.ate);
   for (const e of agenda.semanais) {
+    if (e.t === 'aula' && emFeriado) continue;
     const distancia = (semanaFim - e.m + MINUTOS_SEMANA) % MINUTOS_SEMANA;
     if (distancia < JANELA_MIN) achados.push(e);
   }

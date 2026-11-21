@@ -11,20 +11,27 @@ describe('feriados', () => {
     expect(ts(pascoa(2027))).toBe(ts(new Date(2027, 2, 28)));
     expect(ts(pascoa(2028))).toBe(ts(new Date(2028, 3, 16)));
   });
-  test('2026 tem móveis e locais; 2027 não inventa local', () => {
+  test('2026 tem móveis e locais; 2027 só o que a lei fixa', () => {
     const d26 = feriadosDoAno(2026).map((f) => ts(f.data));
-    for (const [m, d] of [[2, 16], [2, 17], [4, 3], [6, 4], [6, 15], [11, 17], [12, 28]]) expect(d26).toContain(ts(new Date(2026, m - 1, d)));
+    for (const [m, d] of [[2, 16], [2, 17], [4, 3], [6, 4], [6, 15], [11, 19], [12, 28]]) expect(d26).toContain(ts(new Date(2026, m - 1, d)));
+    // Tratado de Petrópolis de 2026 foi adiado de 17 para 19/11 (Decreto 11.809/2025).
+    expect(d26).not.toContain(ts(new Date(2026, 10, 17)));
     const d27 = feriadosDoAno(2027).map((f) => ts(f.data));
-    expect(d27).toContain(ts(new Date(2027, 10, 20)));
-    expect(d27).not.toContain(ts(new Date(2027, 11, 28)));
+    for (const [m, d] of [[11, 20], [1, 23], [6, 15], [9, 5], [12, 28]]) expect(d27).toContain(ts(new Date(2027, m - 1, d)));
+    // Datas que o decreto de 2027 ainda pode adiar ficam de fora até ele sair.
+    for (const [m, d] of [[1, 20], [3, 8], [11, 17]]) expect(d27).not.toContain(ts(new Date(2027, m - 1, d)));
   });
   test('avisos', () => {
-    expect(avisoFeriado(new Date(2026, 10, 19, 10))).toEqual({ titulo: 'Amanhã é feriado · Dia da Consciência Negra', texto: 'Sem aulas. Confira o funcionamento do RU.' });
+    expect(avisoFeriado(new Date(2027, 10, 19, 10))).toEqual({ titulo: 'Amanhã é feriado · Dia da Consciência Negra', texto: 'Sem aulas. Confira o funcionamento do RU.' });
+    // No dia 19/11/2026 o feriado do dia vence o de amanhã.
+    expect(avisoFeriado(new Date(2026, 10, 19, 10)).titulo).toBe('Hoje é feriado · Tratado de Petrópolis');
     expect(avisoFeriado(new Date(2026, 11, 25, 23, 59)).titulo).toBe('Hoje é feriado · Natal');
     expect(avisoFeriado(new Date(2026, 1, 16)).titulo).toBe('Hoje é ponto facultativo · Carnaval');
     expect(avisoFeriado(new Date(2026, 5, 3)).titulo).toBe('Amanhã é ponto facultativo · Corpus Christi');
     expect(avisoFeriado(new Date(2026, 11, 31)).titulo).toBe('Amanhã é feriado · Confraternização Universal');
     expect(avisoFeriado(new Date(2026, 10, 4))).toBeNull();
+    expect(avisoFeriado(new Date(2026, 10, 18, 10)).titulo).toBe('Amanhã é feriado · Tratado de Petrópolis');
+    expect(avisoFeriado(new Date(2026, 10, 16, 10))).toBeNull();
   });
 });
 
@@ -76,5 +83,17 @@ describe('agenda das notificações', () => {
     expect(a.semanais.filter((e) => e.t === 'refeicao')).toHaveLength(5);
     expect(JSON.stringify(a)).not.toContain('Direito');
     expect(montarAgenda({ prefs, aulas, agora: new Date(2027, 0, 10), fusoMin: 300 }).semanais.filter((e) => e.t === 'aula')).toHaveLength(0);
+  });
+});
+
+describe('pausas de feriado nos avisos', () => {
+  test('manda os feriados dos próximos dias só quando há aviso de aula', async () => {
+    const { montarAgenda } = await import('../src/lib/push.js');
+    const aulas = [{ disciplina: 'X', diaSemana: 1, inicioMin: 480, fimMin: 600 }];
+    const ligado = { avisos: { aulas: true, refeicoes: [], classroom: false } };
+    const a = montarAgenda({ prefs: ligado, aulas, agora: new Date(2026, 10, 10), fusoMin: 300 });
+    const dias = a.pausas.map((p) => new Date(p.de * 60000).getDate());
+    expect(dias).toContain(19); // Tratado de Petrópolis (adiado para 19/11/2026)
+    expect(montarAgenda({ prefs: { avisos: { aulas: false, refeicoes: ['almoco'], classroom: false } }, aulas, agora: new Date(2026, 10, 10) }).pausas).toEqual([]);
   });
 });

@@ -3,7 +3,7 @@ import { ler } from '../lib/armazenamento.js';
 import { atualizarCardapio, atualizarRu } from '../lib/dados.js';
 import { INSTAGRAM_RU } from '../lib/config.js';
 import { formatarData, formatarHoraMin } from '../lib/dominio/formatos.js';
-import { REFEICOES, cardapioValeEm, itensDoCardapio, proximaRefeicao } from '../lib/dominio/refeicoes.js';
+import { AVISO_REPETIDO, REFEICOES, cardapioValeEm, itensDoCardapio, proximaRefeicao, refeicaoRepetida } from '../lib/dominio/refeicoes.js';
 import { abreFora, barraCompacta, botaoRedondo, cabecalho, esqueleto, html, ic, item, marcarSegmento, montar, puxarParaAtualizar, remontar, segmentos } from '../ui/componentes.js';
 import { cartaoSaldo, expirado, faixaExpirada, faixaFalha, fraseDeFalha, semEticket } from './comum.js';
 import { abrirQr } from './qr.js';
@@ -17,7 +17,9 @@ function fraseSemCardapio(refeicao, cardapio, deHoje, agora) {
 }
 
 export default async function ru(tela, { ir, parametro, acoes }) {
-  let escolhida = REFEICOES.some((r) => r.id === parametro) ? parametro : proximaRefeicao(new Date()).id;
+  // Depois do jantar, abre no jantar (o último de hoje): mostrar o café de hoje logo de cara pareceria o de amanhã.
+  const proximaAoAbrir = proximaRefeicao(new Date());
+  let escolhida = REFEICOES.some((r) => r.id === parametro) ? parametro : proximaAoAbrir.amanha ? 'jantar' : proximaAoAbrir.id;
   let falha = '';
   let carregando = true;
 
@@ -27,6 +29,8 @@ export default async function ru(tela, { ir, parametro, acoes }) {
     const refeicao = REFEICOES.find((r) => r.id === escolhida);
     const deHoje = cardapioValeEm(cardapio, agora);
     const itens = deHoje ? itensDoCardapio(cardapio.textos[refeicao.id]) : [];
+    const repetida = itens.length > 0 && refeicaoRepetida(cardapio, refeicao.id);
+    const encerrado = proximaRefeicao(agora).amanha;
     const semRu = await semEticket();
     remontar(tela.querySelector('.pilha'), html`
       ${cabecalho({ titulo: 'RU', sub: 'Restaurante Universitário · Ufac', acoes: botaoRedondo('menu', 'Menu', 'menu') })}
@@ -35,11 +39,11 @@ export default async function ru(tela, { ir, parametro, acoes }) {
       ${cartaoSaldo({ ru: saldo, semRu, carregando, agora, largo: true, rotulo: 'Saldo' })}
       <section class="cartao" aria-labelledby="titulo-cardapio">
         <h2 id="titulo-cardapio" style="margin-bottom:2px">Cardápio de hoje</h2>
-        <div class="apoio" style="margin-bottom:12px">${formatarData(agora)}</div>
+        <div class="apoio" style="margin-bottom:12px">${formatarData(agora)}${encerrado ? html`<br>As refeições de hoje já foram servidas. O cardápio de amanhã costuma sair perto de cada horário.` : ''}</div>
         ${segmentos(REFEICOES.map((r) => ({ id: r.id, nome: r.nome, sub: formatarHoraMin(r.inicioMin) })), escolhida, 'refeicao', 'Refeição')}
         <div aria-live="polite">
         ${itens.length
-          ? html`<ul class="lista-cardapio">${itens.map((i) => html`<li>${i}</li>`)}</ul>`
+          ? html`${repetida ? html`<div class="apoio" style="margin-bottom:8px">${AVISO_REPETIDO}</div>` : ''}<ul class="lista-cardapio">${itens.map((i) => html`<li>${i}</li>`)}</ul>`
           : carregando && !deHoje
             ? esqueleto(3)
             : html`<div class="apoio" style="font-size:var(--fs-corpo)">${fraseSemCardapio(refeicao, cardapio, deHoje, agora)}</div>

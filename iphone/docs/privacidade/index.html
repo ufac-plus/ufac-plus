@@ -10,8 +10,12 @@
   <link rel="manifest" href="/manifest.webmanifest">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="UFAC+">
-  <!-- Atalho antigo, criado antes do manifest, que abre esta página como app: vai direto para o UFAC+. -->
-  <script>if (navigator.standalone || matchMedia('(display-mode: standalone)').matches) location.replace('/#/inicio');</script>
+  <!-- Atalho antigo, criado antes do manifest, que abre esta página como app: vai direto para o UFAC+.
+       Aberta de dentro do app (#app, em Configurações e Boas-vindas), fica: sem isso o toque voltava para a Início. -->
+  <script>
+    var doApp = location.hash === '#app';
+    if (!doApp && (navigator.standalone || matchMedia('(display-mode: standalone)').matches)) location.replace('/#/inicio');
+  </script>
   <style>
     :root { color-scheme: light dark; --bg: #f3f5f9; --surface: #fff; --text: #0e1726; --muted: #536074; --border: #e3e8f0; --primary: #0b4fa8; --green: #1f7a44; --green-bg: #e1f4e8; }
     @media (prefers-color-scheme: dark) { :root { --bg: #000000; --surface: #1c1c1e; --text: #ffffff; --muted: #98989f; --border: #2c2c2e; --primary: #0a84ff; --green: #30d158; --green-bg: #0f2a17; } }
@@ -28,11 +32,14 @@
     .resumo { background: var(--green-bg); color: var(--green); border: 0; }
     .resumo li { color: var(--text); }
     a { color: var(--primary); }
+    .voltar { display: inline-block; min-height: 44px; line-height: 44px; margin: -8px 0 6px; font-weight: 600; text-decoration: none; }
+    .voltar[hidden] { display: none; }
     footer { color: var(--muted); font-size: 13px; text-align: center; margin-top: 24px; }
   </style>
 </head>
 <body>
 <main>
+  <a class="voltar" id="voltar" href="/" hidden>‹ Voltar</a>
   <h1>Privacidade do UFAC+ no iPhone</h1>
   <div class="sub">Versão para iPhone (app da web). Atualizada em 12 de novembro de 2026.</div>
 
@@ -118,7 +125,18 @@
     <p>Como quase tudo fica no seu iPhone, você controla os dados: <strong>Sair da conta</strong> apaga tudo do aparelho e a inscrição de notificações no repassador. Para dúvidas, use <strong>Relatar um problema</strong>, em Configurações.</p>
   </section>
 
-  <footer>App independente, feito por um aluno. Não é um aplicativo oficial da Ufac.<br><a href="/">Voltar ao UFAC+</a></footer>
+  <footer>App independente, feito por um aluno. Não é um aplicativo oficial da Ufac.<br><a href="/" class="volta-app">Voltar ao UFAC+</a></footer>
 </main>
+<script>
+  // Dentro do app instalado não há botão de voltar do Safari: o "Voltar" devolve à tela de onde veio.
+  if (doApp) {
+    document.getElementById('voltar').hidden = false;
+    document.querySelectorAll('#voltar, .volta-app').forEach(function (a) {
+      a.addEventListener('click', function (e) {
+        if (history.length > 1) { e.preventDefault(); history.back(); }
+      });
+    });
+  }
+</script>
 </body>
 </html>

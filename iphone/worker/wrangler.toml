@@ -16,9 +16,19 @@ crons = ["*/5 * * * *"]
 binding = "INSCRICOES"
 id = "54ea6fe743e245518af4a90b98acec1b"
 
+# Limite de pedidos por IP em /google/* (Rate Limiting do Workers, incluído no plano grátis).
+# namespace_id é um número qualquer, único na conta. O mesmo limite fica em src/limite.js como reserva.
+[[ratelimits]]
+name = "LIMITE_GOOGLE"
+namespace_id = "1201"
+simple = { limit = 30, period = 60 }
+
 [vars]
 # Endereços do PWA que podem usar o Worker. "*.dominio" aceita as prévias das branches.
-ORIGENS = "https://ufac-plus-ios.pages.dev,*.ufac-plus-ios.pages.dev,http://localhost:5173,http://localhost:4173"
+ORIGENS = "https://ufac-plus-ios.pages.dev,*.ufac-plus-ios.pages.dev"
+# Endereços locais: só valem com DEV_LOCAL=1, que o "npm run dev" passa (wrangler dev --var DEV_LOCAL:1).
+# Em produção DEV_LOCAL não existe, então um site em localhost não usa o Worker publicado.
+ORIGENS_DEV = "http://localhost:5173,http://localhost:4173"
 VAPID_ASSUNTO = "https://ufac-plus-ios.pages.dev"
 # ID do cliente OAuth "Aplicativo da Web" do Classroom (projeto ufac-plus-iphone). Não é segredo.
 GOOGLE_CLIENT_ID = "335109047542-3u84roj234m86f4vjnsl0vat6g1tg9e7.apps.googleusercontent.com"

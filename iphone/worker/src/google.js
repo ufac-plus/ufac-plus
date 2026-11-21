@@ -2,20 +2,19 @@
 // Nada é guardado. O refresh token volta cifrado (AES-GCM, SESSAO_CHAVE) e fica só no iPhone, como os
 // cookies da Ufac. As leituras do Classroom vão do iPhone direto para o Google, sem passar por aqui.
 import { cifrar, decifrar } from './cofre.js';
+import { listaDeOrigens } from './origens.js';
 
 const TOKEN = 'https://oauth2.googleapis.com/token';
 const REVOGAR = 'https://oauth2.googleapis.com/revoke';
 
 /**
  * Só aceita voltar para a raiz de um endereço exato do PWA, em https (sem curingas de prévia).
- * localhost só com GOOGLE_DEV=1 (.dev.vars): em produção, um servidor local qualquer não troca códigos.
+ * http (localhost) só com GOOGLE_DEV=1 (.dev.vars) e DEV_LOCAL=1 (npm run dev): em produção, um servidor local qualquer não troca códigos.
  */
 export function redirecionamentoPermitido(redirect, env) {
   if (typeof redirect !== 'string') return false;
-  return (env.ORIGENS ?? '')
-    .split(',')
-    .map((o) => o.trim())
-    .filter((o) => o && !o.startsWith('*.') && (o.startsWith('https://') || env.GOOGLE_DEV === '1'))
+  return listaDeOrigens(env)
+    .filter((o) => !o.startsWith('*.') && (o.startsWith('https://') || env.GOOGLE_DEV === '1'))
     .some((o) => redirect === `${o}/`);
 }
 

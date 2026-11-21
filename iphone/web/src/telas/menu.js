@@ -12,10 +12,10 @@ export default async function menu(tela, { voltar, ir, perfil, acoes }) {
   const professor = perfil === 'professor';
   montar(tela, html`<div class="pilha entra">
     ${cabecalho({ titulo: 'Menu', acoes: botaoRedondo('fechar', 'Fechar', 'voltar') })}
+    ${!professor ? html`<button class="cartao item tocavel" data-acao="biblioteca"><span class="icone">${ic('livro')}</span><span class="cresce"><span class="titulo">Biblioteca</span><span class="apoio sub">Pesquisar no acervo</span></span><span class="seta">${ic('seta')}</span></button>` : ''}
     <div class="apoio">${professor ? 'Portal do Professor' : 'Portal do Aluno'} · abre no Safari</div>
     <div class="grade-2">
       ${!professor && id ? atalho('calendario', 'Matrícula', oficial.matricula(id)) : ''}
-      ${!professor && id ? atalho('livro', 'Biblioteca', oficial.biblioteca(id)) : ''}
       ${comunicacoes ? atalho('megafone', 'Comunicações', comunicacoes) : ''}
       ${atalho('globo', 'Abrir site completo', professor ? URL_PORTAL_PROFESSOR : URL_PORTAL_ALUNO)}
     </div>
@@ -25,5 +25,6 @@ export default async function menu(tela, { voltar, ir, perfil, acoes }) {
   </div>`);
   acoes.voltar = voltar;
   acoes.config = () => ir('configuracoes');
+  acoes.biblioteca = () => ir('biblioteca');
   acoes.sair = () => confirmarSaida(ir);
 }
