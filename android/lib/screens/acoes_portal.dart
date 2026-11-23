@@ -23,7 +23,27 @@ void entrarNoPortal(BuildContext context, {VoidCallback? aoEntrar}) {
 Future<void> atualizarPortal(BuildContext context) async {
   final mensageiro = ScaffoldMessenger.of(context);
   final resultado = await RepositorioPortal.instancia.atualizar();
-  if (!context.mounted || resultado == ResultadoPortal.atualizado) return;
+  if (!context.mounted) return;
+  _avisarResultado(context, mensageiro, resultado);
+}
+
+/// Lê (ou relê) um semestre já encerrado na tela Notas, com a sessão que já existe.
+/// Se ela caiu, oferece entrar e, ao voltar, lê esse semestre.
+Future<void> atualizarSemestreDoPortal(BuildContext context, String semestre) async {
+  final mensageiro = ScaffoldMessenger.of(context);
+  final portal = RepositorioPortal.instancia;
+  final resultado = await portal.atualizarSemestre(semestre);
+  if (!context.mounted) return;
+  _avisarResultado(context, mensageiro, resultado, aoEntrar: () => portal.atualizarSemestre(semestre));
+}
+
+void _avisarResultado(
+  BuildContext context,
+  ScaffoldMessengerState mensageiro,
+  ResultadoPortal resultado, {
+  VoidCallback? aoEntrar,
+}) {
+  if (resultado == ResultadoPortal.atualizado) return;
   final expirou = resultado == ResultadoPortal.sessaoExpirada;
   mensageiro
     ..hideCurrentSnackBar()
@@ -34,7 +54,9 @@ Future<void> atualizarPortal(BuildContext context) async {
               ? 'Para atualizar os dados do Portal, entre de novo.'
               : 'Não consegui ler o Portal agora. Mostrando os dados salvos.',
         ),
-        action: expirou ? SnackBarAction(label: 'Entrar', onPressed: () => entrarNoPortal(context)) : null,
+        action: expirou
+            ? SnackBarAction(label: 'Entrar', onPressed: () => entrarNoPortal(context, aoEntrar: aoEntrar))
+            : null,
       ),
     );
 }

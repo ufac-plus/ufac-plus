@@ -261,10 +261,20 @@ class ItemLista extends StatelessWidget {
 
 /// Título da tela com subtítulo e botões à direita.
 class CabecalhoTela extends StatelessWidget {
-  const CabecalhoTela({super.key, required this.titulo, this.sobretitulo, this.subtitulo, this.acoes = const []});
+  const CabecalhoTela({
+    super.key,
+    required this.titulo,
+    this.sobretitulo,
+    this.subtitulo,
+    this.detalhe,
+    this.acoes = const [],
+  });
 
   final String titulo;
   final String? sobretitulo, subtitulo;
+
+  /// Widget sob o título, depois do subtítulo (ex.: a pílula do semestre em Notas).
+  final Widget? detalhe;
   final List<Widget> acoes;
 
   @override
@@ -283,6 +293,7 @@ class CabecalhoTela extends StatelessWidget {
                 const SizedBox(height: 2),
                 Text(subtitulo!, style: AppTexto.apoio.copyWith(color: context.cores.secundario)),
               ],
+              if (detalhe != null) ...[const SizedBox(height: 6), detalhe!],
             ],
           ),
         ),

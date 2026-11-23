@@ -305,8 +305,8 @@ ufac_no_bolso/
   - Extratores em Dart, sobre o HTML, testáveis com fixtures (em vez de JS injetado).
   - O número do QR é a matrícula. A matrícula fica sempre visível na Início, mas só no cofre, nunca no SQLite.
 - **Notas e faltas:**
-  - Faltas: numa disciplina de 60 h, até **16 são permitidas** e a **17ª reprova** (decisão de Arthur); desde a 0.1.14 o limite escala com a carga horária de cada disciplina (`faltasPermitidas`, igual ao iPhone). Sem a carga, vale 16 como estimativa.
-  - Notas: só do semestre atual, sempre com a data da leitura.
+  - Faltas: numa disciplina de 72 h (Direito), até **16 são permitidas** e a **17ª reprova** (decisão de Arthur); desde a 0.1.14 o limite escala com a carga horária de cada disciplina (`faltasPermitidas`, igual ao iPhone). Sem a carga, vale 16 como estimativa.
+  - Notas: o semestre atual e, desde a 0.1.14, os anteriores (lidos só quando escolhidos, em cache), sempre com a data da leitura.
 - **Feriados:** lista local. Os nacionais e móveis são calculados. Os do Acre e de Rio Branco entram só depois de conferidos: hoje só 2026. Carnaval e Corpus Christi são pontos facultativos ("Confira se há aula").
 - **Visual:**
   - Nome: UFAC+.

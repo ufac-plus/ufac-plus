@@ -202,3 +202,8 @@ Prints dos temas: `flutter test test/visual_test.dart --update-goldens --tags vi
 - Faltas: a mesma fórmula do iPhone (`faltasPermitidas`, `aulasProgramadas` em `lib/data/academico.dart`), substituindo o "16 fixo" (que continua como estimativa sem carga). A carga horária, que já era extraída mas não era usada, passa a ser lida uma vez por disciplina na página da turma e guardada. Notas mostram "Frequência X% · carga de Y h · a Nª falta reprova".
 - Exame: "Para passar, você precisa de pelo menos X no exame", com a regra do iPhone (`exameDaDisciplina`).
 - Menu: "Mapa do campus" (`https://sistemas.ufac.br/mapa/`), para aluno e professor.
+
+## 2026-11-23: Android 0.1.14 — ajustes pedidos por Arthur depois do primeiro teste
+- **Faltas:** as disciplinas de Direito têm **72 h** e a 17ª falta reprova; o app dizia "a 20ª" (supunha 60 h → 16). A referência passou a ser 72 h → 16 (`cargaReferenciaFaltas` em `config.dart`): 36 h → 8, 54 h → 12, 108 h → 24; frequência sobre carga × 8/9. O iPhone ainda usa 60 h.
+- **Semestres anteriores:** a tela Notas ganhou a pílula do semestre e a folha com todos os semestres, como no iPhone. A lista sai da mesma página de Notas (sem pedido a mais); um semestre anterior só é lido quando escolhido, fica no cache e só é relido ao puxar para atualizar nele. Substitui a decisão antiga "notas só do semestre atual".
+- **Mapa do campus:** abre dentro do app (`TelaSiteOficial`), sem ir para o navegador.
