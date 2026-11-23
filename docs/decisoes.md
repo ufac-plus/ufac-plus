@@ -194,3 +194,11 @@ Prints dos temas: `flutter test test/visual_test.dart --update-goldens --tags vi
 - Em feriado (não ponto facultativo) a Início pula a aula, o .ics do Calendário tira o dia (EXDATE) e o Worker não manda o aviso de aula: o iPhone manda as datas de feriado dos próximos 120 dias (dado público) como `pausas`.
 - Configurações › Créditos: quem faz o UFAC+ e o que cada um fez, com o mesmo texto do site.
 - Worker: limite de 30 pedidos/min por IP em `/google/*` (Rate Limiting do Workers, com contador em memória de reserva); `localhost` só com `DEV_LOCAL=1` (issue #12).
+
+## 2026-11-23: Android 0.1.14 — paridade com o iPhone 1.5 (refeito sem o PC)
+- O branch `android-paridade-iphone` original ficou só no PC (não chegou ao GitHub). Foi refeito a partir do iPhone, sem Flutter local; os testes e o APK passaram a sair do robô `.github/workflows/android.yml` (guia em `docs/compilar-no-github.md`).
+- Feriados: as mesmas decisões do iPhone em 21/11 (19/11/2026 e as datas fixas de 2027). Ainda **não** portado: a Início pular a aula em feriado.
+- Refeições: depois das 19h30 a Início mostra "Amanhã · Café" e nunca os itens lidos hoje; a aba RU abre no Jantar com "as refeições de hoje já foram servidas". Ainda **não** portado: o aviso "Igual ao de ontem".
+- Faltas: a mesma fórmula do iPhone (`faltasPermitidas`, `aulasProgramadas` em `lib/data/academico.dart`), substituindo o "16 fixo" (que continua como estimativa sem carga). A carga horária, que já era extraída mas não era usada, passa a ser lida uma vez por disciplina na página da turma e guardada. Notas mostram "Frequência X% · carga de Y h · a Nª falta reprova".
+- Exame: "Para passar, você precisa de pelo menos X no exame", com a regra do iPhone (`exameDaDisciplina`).
+- Menu: "Mapa do campus" (`https://sistemas.ufac.br/mapa/`), para aluno e professor.

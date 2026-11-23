@@ -106,7 +106,14 @@ class RepositorioPortal extends ChangeNotifier {
       final url = d.urlNotas;
       final quadro = url == null ? null : await sessao.lerEMarcar(Sistema.portal, url: url);
       if (url != null && quadro?.resultado != ResultadoVerificacao.ativa) return ResultadoPortal.falhou;
-      lidas.add(lerNotasDaDisciplina(quadro?.html ?? '', d));
+      final lida = lerNotasDaDisciplina(quadro?.html ?? '', d);
+      // A carga horária não muda no semestre: só lê a página da turma se ainda não souber (como no iPhone).
+      var carga = notas?.where((a) => a.disciplina == lida.disciplina).firstOrNull?.cargaHoraria;
+      if (carga == null && d.urlTurma != null) {
+        final turma = await sessao.lerEMarcar(Sistema.portal, url: d.urlTurma!);
+        if (turma.html != null) carga = lerCargaHoraria(turma.html!);
+      }
+      lidas.add(lida.comCargaHoraria(carga));
     }
     notas = lidas;
     semestreDasNotas = lista.semestre;

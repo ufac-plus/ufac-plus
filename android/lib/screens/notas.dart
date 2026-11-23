@@ -60,6 +60,13 @@ class TelaNotas extends StatelessWidget {
           const Cartao(child: EstadoVazio(icone: Icons.grading_rounded, titulo: 'Sem disciplinas neste semestre'))
         else
           for (final n in notas) _CartaoNota(nota: n),
+        // Mesma nota de rodapé do iPhone: o limite de faltas depende da carga horária.
+        if (notas != null && notas.isNotEmpty)
+          Text(
+            'É preciso ter 75% de frequência. As faltas permitidas dependem da carga horária de cada '
+            'disciplina: 16 numa de 60 h, 8 numa de 30 h.',
+            style: AppTexto.rotulo.copyWith(color: c.secundario),
+          ),
       ],
     );
   }
@@ -117,8 +124,47 @@ class _CartaoNota extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 10),
-          AvisoFaltas(nota: nota),
+          AvisoFaltas(nota: nota, mostrarDetalhe: true),
+          // A tela só mostra o semestre atual.
+          _CaixaExame(nota: nota),
         ],
+      ),
+    );
+  }
+}
+
+/// Nota mínima no exame, com a regra citada. Só fala da nota: aprovação e reprovação quem diz é o portal.
+/// Mesma etiqueta âmbar do "começa em" (token chip), sem tom de alarme.
+class _CaixaExame extends StatelessWidget {
+  const _CaixaExame({required this.nota});
+
+  final NotasDisciplina nota;
+
+  @override
+  Widget build(BuildContext context) {
+    final e = exameDaDisciplina(nota, atual: true);
+    if (e == null) return const SizedBox.shrink();
+    final c = context.cores;
+    return Padding(
+      padding: const EdgeInsets.only(top: 12),
+      child: Cartao(
+        cor: c.chipFundo,
+        preenchimento: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Para passar, você precisa de pelo menos ${formatarNota(e.necessaria)} no exame',
+              style: AppTexto.corpoForte.copyWith(color: c.chipTexto),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'Média parcial ${formatarNota(e.mediaParcial, 2)}. Média final = (média parcial + exame) ÷ 2, '
+              'e passa quem chega a 5, com 75% de frequência (Regimento Geral da Ufac, arts. 319 e 320).',
+              style: AppTexto.apoio.copyWith(color: c.chipTexto),
+            ),
+          ],
+        ),
       ),
     );
   }
