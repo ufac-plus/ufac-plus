@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import '../config.dart';
 import '../data/classroom.dart';
@@ -149,14 +148,10 @@ class TelaMenu extends StatelessWidget {
   }
 }
 
-/// Abre o mapa oficial do campus no navegador, fora do app (mesmo padrão do Instagram do RU).
-Future<void> abrirMapaCampus(BuildContext context) async {
-  final mensageiro = ScaffoldMessenger.of(context);
-  final abriu = await launchUrl(Uri.parse(urlMapaCampus), mode: LaunchMode.externalApplication);
-  if (!abriu) {
-    mensageiro.showSnackBar(const SnackBar(content: Text('Não consegui abrir o mapa do campus neste celular.')));
-  }
-}
+/// Abre o mapa oficial do campus dentro do app (pedido de Arthur: a pessoa não sai do app).
+Future<void> abrirMapaCampus(BuildContext context) => Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => const TelaSiteOficial(titulo: 'Mapa do campus', endereco: urlMapaCampus)),
+    );
 
 List<_Atalho> _atalhosProfessor(BuildContext context) {
   void abrir(String titulo, String endereco) => Navigator.of(context).push(

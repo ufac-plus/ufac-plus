@@ -3,7 +3,7 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ufac_no_bolso/config.dart';
 
-// Atalho "Mapa do campus" do Menu: mesmo endereço e rótulo do iPhone, só https.
+// Atalho "Mapa do campus" do Menu: mesmo endereço e rótulo do iPhone, só https, aberto dentro do app.
 void main() {
   group('Mapa do campus', () {
     test('endereço é https e é o mesmo do iPhone', () {
@@ -25,7 +25,8 @@ void main() {
       final menu = File('lib/screens/menu.dart').readAsStringSync();
       expect(menu, contains("'Mapa do campus'"));
       expect(menu, contains('urlMapaCampus'));
-      expect(menu, contains('LaunchMode.externalApplication'));
+      expect(menu, contains('TelaSiteOficial('));
+      expect(menu, isNot(contains('LaunchMode.externalApplication')));
       expect(menu, isNot(contains('sistemas.ufac.br/mapa')));
     });
   });
