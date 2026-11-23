@@ -5,7 +5,7 @@ import '../theme/app_cores.dart';
 import '../theme/app_texto.dart';
 
 /// "6 de 16 faltas permitidas", em âmbar perto do limite e em vermelho ao passar dele.
-/// O limite vem da carga horária da disciplina (16 numa de 60 h, 8 numa de 30 h); sem a carga, 16
+/// O limite vem da carga horária da disciplina (16 numa de 72 h, 8 numa de 36 h); sem a carga, 16
 /// como estimativa. Com [mostrarDetalhe], embaixo vem "Frequência X% · carga de Y h" (tela Notas).
 class AvisoFaltas extends StatelessWidget {
   const AvisoFaltas({super.key, required this.nota, this.mostrarDetalhe = false});

@@ -1,6 +1,6 @@
 import 'dart:math' as math;
 
-import '../config.dart' show limiteFaltas;
+import '../config.dart' show cargaReferenciaFaltas, limiteFaltas;
 
 /// Dados do Portal. A matrícula não entra aqui: ela é igual ao número do QR e fica no cofre.
 class Identificacao {
@@ -213,14 +213,14 @@ class SituacaoFaltas {
 }
 
 /// Regimento Geral da Ufac, arts. 314, I, e 320, II: reprova quem não tem 75% de frequência.
-/// O portal conta as faltas por hora-aula. As 16 de Arthur numa de 60 h são 25% de 64 aulas
-/// programadas (carga × 16/15), então o limite escala com a carga: 30 h → 8, 45 h → 12,
-/// 60 h → 16, 90 h → 24. Mesma regra do iPhone (iphone/web/src/lib/dominio/academico.js).
-double aulasProgramadas(int cargaHoraria) => cargaHoraria * limiteFaltas / 60 / 0.25;
+/// Referência real (Arthur, 23/11/2026): as disciplinas de Direito têm 72 h e a 17ª falta reprova,
+/// ou seja, 16 permitidas = 25% de 64 aulas programadas (carga × 8/9). O limite é proporcional à
+/// carga: 36 h → 8, 54 h → 12, 72 h → 16, 108 h → 24. (O iPhone ainda usa 60 h como referência.)
+double aulasProgramadas(int cargaHoraria) => cargaHoraria * limiteFaltas / cargaReferenciaFaltas / 0.25;
 
-/// Para baixo: numa carga fora dos múltiplos de 15 h (ex.: 40 h), arredondar para cima deixaria a
+/// Para baixo: numa carga fora dos múltiplos de 9 h (ex.: 60 h), arredondar para cima deixaria a
 /// última falta "permitida" abaixo dos 75%. O 1e-9 evita erro de ponto flutuante.
-int faltasPermitidas(int cargaHoraria) => (cargaHoraria * limiteFaltas / 60 + 1e-9).floor();
+int faltasPermitidas(int cargaHoraria) => (cargaHoraria * limiteFaltas / cargaReferenciaFaltas + 1e-9).floor();
 
 /// Reprova quem passa das faltas permitidas pela carga horária (regra acima). Sem a carga, usa
 /// [permitidasSemCarga] e marca `estimado`. [percentual] troca a regra por floor(carga × percentual).
@@ -264,7 +264,7 @@ SituacaoFaltas? situacaoFaltas(
 }
 
 /// Linha de apoio da tela Notas, igual à do iPhone (iphone/web/src/telas/notas.js). Sem a carga
-/// horária, o limite é o de uma disciplina de 60 h: deixa claro que é estimativa.
+/// horária, o limite é o de uma disciplina de 72 h: deixa claro que é estimativa.
 String detalheFrequencia(SituacaoFaltas s) => s.estimado
     ? 'Estimativa: não consegui ler a carga horária desta disciplina.'
     : 'Frequência ${s.frequencia}% · carga de ${s.cargaHoraria} h · a ${s.permitidas + 1}ª falta reprova';
@@ -320,7 +320,7 @@ ExameNecessario? exameDaDisciplina(NotasDisciplina? d, {required bool atual}) {
   }
   final faltas = situacaoFaltas(d.faltas, cargaHoraria: d.cargaHoraria);
   if (faltas?.nivel == NivelFaltas.limite) return null;
-  // Sem a carga horária o limite é estimativa (o de 60 h): com alguma falta, pode já ter passado do limite real.
+  // Sem a carga horária o limite é estimativa (o de 72 h): com alguma falta, pode já ter passado do limite real.
   if (faltas != null && faltas.estimado && faltas.faltas > 0) return null;
   final mediaParcial = lerNumero(doResumo('média'));
   final necessaria = notaNecessariaNoExame(mediaParcial);

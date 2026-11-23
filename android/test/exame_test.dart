@@ -15,7 +15,7 @@ NotasDisciplina disciplina({
   String finalResumo = '',
   String mf = '',
   String faltas = '4',
-  int? carga = 60,
+  int? carga = 72,
 }) =>
     NotasDisciplina(
       disciplina: 'Disciplina Exemplo',
@@ -97,12 +97,12 @@ void main() {
       expect(exameDaDisciplina(disciplina(faltas: '17'), atual: true), isNull);
       expect(exameDaDisciplina(disciplina(faltas: '16'), atual: true), isNotNull);
     });
-    test('sem a carga horária, o limite de faltas é estimativa: com faltas, nada (numa de 30 h já teria passado)', () {
+    test('sem a carga horária, o limite de faltas é estimativa: com faltas, nada (numa de 36 h já teria passado)', () {
       expect(exameDaDisciplina(disciplina(faltas: '10', carga: null), atual: true), isNull);
       expect(exameDaDisciplina(disciplina(faltas: '1', carga: null), atual: true), isNull);
       expect(exameDaDisciplina(disciplina(faltas: '0', carga: null), atual: true), isNotNull);
-      expect(exameDaDisciplina(disciplina(faltas: '8', carga: 30), atual: true), isNotNull);
-      expect(exameDaDisciplina(disciplina(faltas: '9', carga: 30), atual: true), isNull);
+      expect(exameDaDisciplina(disciplina(faltas: '8', carga: 36), atual: true), isNotNull);
+      expect(exameDaDisciplina(disciplina(faltas: '9', carga: 36), atual: true), isNull);
     });
     test('sem quadro de notas: nada', () {
       final d = disciplina();
@@ -128,7 +128,7 @@ void main() {
     final d = lerNotasDaDisciplina(
       fixture('portal_notaturma_exame_ajax.html'),
       const DisciplinaDoSemestre('Outra Disciplina', 'Matrícula', null),
-    ).comCargaHoraria(60);
+    ).comCargaHoraria(72);
     final e = exameDaDisciplina(d, atual: true)!;
     expect(e.mediaParcial, 3.5);
     expect(e.necessaria, 6.5);

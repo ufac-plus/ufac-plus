@@ -104,10 +104,11 @@ const contatoEmail = String.fromEnvironment('CONTATO_EMAIL');
 // Repositório público com os APKs ("dono/nome"). Também vem do build.
 const repositorioAtualizacoes = String.fromEnvironment('ATUALIZACOES_REPO');
 
-// Faltas: numa disciplina de 60 h pode ter até 16 e a 17ª reprova (decisão de Arthur).
-// O limite de cada disciplina escala com a carga horária (academico.dart: faltasPermitidas);
-// sem a carga lida, vale este número como estimativa.
+// Faltas: numa disciplina de 72 h (as de Direito) pode ter até 16 e a 17ª reprova (Arthur, 23/11/2026).
+// O limite de cada disciplina é proporcional à carga horária (academico.dart: faltasPermitidas):
+// 36 h → 8, 54 h → 12, 72 h → 16. Sem a carga lida, vale 16 como estimativa.
 const limiteFaltas = 16;
+const cargaReferenciaFaltas = 72;
 
 /// Hora do aviso diário do Classroom (com o que vence até o fim do dia seguinte).
 const horaAvisoClassroom = 19;
