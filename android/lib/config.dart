@@ -25,6 +25,10 @@ const urlHistoricoRefeicoes = 'https://sistemas.ufac.br/eticket/historico/refeic
 const urlAvisosRu = 'https://sistemas.ufac.br/eticket/informacao/';
 const urlPortal = 'https://portal.ufac.br/aluno/index.action';
 
+// Mapa oficial do campus (NTI da Ufac): blocos e setores. Abre fora do app, sem enviar dado nenhum.
+// Mesmo endereço do iPhone (iphone/web/src/telas/menu.js).
+const urlMapaCampus = 'https://sistemas.ufac.br/mapa/';
+
 String urlMatricula(String idInterno) =>
     'https://portal.ufac.br/aluno/aluno/matricula/solicitacoes.action?matricula=$idInterno';
 String urlBiblioteca(String idInterno) =>
@@ -100,7 +104,9 @@ const contatoEmail = String.fromEnvironment('CONTATO_EMAIL');
 // Repositório público com os APKs ("dono/nome"). Também vem do build.
 const repositorioAtualizacoes = String.fromEnvironment('ATUALIZACOES_REPO');
 
-// Faltas: pode ter até 16 em cada disciplina; a 17ª reprova (decisão de Arthur).
+// Faltas: numa disciplina de 60 h pode ter até 16 e a 17ª reprova (decisão de Arthur).
+// O limite de cada disciplina escala com a carga horária (academico.dart: faltasPermitidas);
+// sem a carga lida, vale este número como estimativa.
 const limiteFaltas = 16;
 
 /// Hora do aviso diário do Classroom (com o que vence até o fim do dia seguinte).

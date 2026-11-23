@@ -1,0 +1,202 @@
+# Robô do Android: roda os testes e gera o APK nos computadores do GitHub.
+# Guia em português simples: docs/compilar-no-github.md
+#
+# Dois modos, escolhidos sozinhos:
+# - OFICIAL: se a chave de assinatura estiver cadastrada nos Secrets do repositório.
+#   Gera o app-release.apk assinado com a mesma chave de sempre, que instala POR CIMA
+#   do app do celular (mantém login e dados). Confere a impressão digital (SHA-1) da chave.
+# - TESTE: sem a chave. Gera "UFAC+ (teste)", com outro identificador, que fica AO LADO
+#   do app oficial. O Classroom não funciona nela (o Google só aceita o app oficial).
+#
+# Nada aqui publica Release: o APK fica só na página da execução ("Artifacts").
+
+name: Android
+
+on:
+  push:
+    branches: [main, 'android-**']
+    paths: ['android/**', '.github/workflows/android.yml']
+  pull_request:
+    paths: ['android/**', '.github/workflows/android.yml']
+  workflow_dispatch:
+    inputs:
+      modo:
+        description: 'Modo do APK: auto (oficial se houver chave), teste ou oficial'
+        type: choice
+        options: [auto, teste, oficial]
+        default: auto
+
+permissions:
+  contents: read
+
+concurrency:
+  group: android-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  FLUTTER_VERSION: '3.47.9'
+  # Impressão digital PÚBLICA da chave do app oficial (CLAUDE.md, 12.1). Não é segredo.
+  SHA1_OFICIAL: '7D:85:A3:3B:3D:30:45:02:4A:20:CD:0A:81:53:EC:F1:CD:60:8E:BA'
+
+jobs:
+  testes:
+    name: Testes
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: android
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - name: Testes (sem os prints)
+        run: flutter test --exclude-tags visual --reporter expanded
+
+  apk:
+    name: APK
+    needs: testes
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: android
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      - name: Escolher o modo
+        id: modo
+        env:
+          TEM_CHAVE: ${{ secrets.ANDROID_KEYSTORE_BASE64 != '' }}
+          PEDIDO: ${{ inputs.modo || 'auto' }}
+        run: |
+          modo="$PEDIDO"
+          if [ "$modo" = "auto" ]; then
+            if [ "$TEM_CHAVE" = "true" ]; then modo=oficial; else modo=teste; fi
+          fi
+          if [ "$modo" = "oficial" ] && [ "$TEM_CHAVE" != "true" ]; then
+            echo "::error::Pediu o modo oficial, mas a chave não está cadastrada nos Secrets. Veja docs/compilar-no-github.md."
+            exit 1
+          fi
+          versao=$(grep -m1 '^version:' pubspec.yaml | sed 's/version:[[:space:]]*//; s/+.*//')
+          echo "modo=$modo" >> "$GITHUB_OUTPUT"
+          echo "versao=$versao" >> "$GITHUB_OUTPUT"
+          echo "Modo: $modo · versão $versao"
+
+      - name: Criar .env.json (só no computador do robô)
+        env:
+          CONTATO_EMAIL: ${{ secrets.CONTATO_EMAIL }}
+          CONTATO_WHATSAPP: ${{ secrets.CONTATO_WHATSAPP }}
+        run: |
+          jq -n --arg repo "${{ github.repository }}" \
+                --arg email "$CONTATO_EMAIL" --arg zap "$CONTATO_WHATSAPP" \
+            '{ATUALIZACOES_REPO: $repo}
+             + (if $email != "" then {CONTATO_EMAIL: $email} else {} end)
+             + (if $zap != "" then {CONTATO_WHATSAPP: $zap} else {} end)' > .env.json
+
+      # ---------- Modo OFICIAL ----------
+      - name: Preparar a chave oficial
+        if: steps.modo.outputs.modo == 'oficial'
+        env:
+          CHAVE_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          SENHA_ARQUIVO: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          APELIDO: ${{ secrets.ANDROID_KEY_ALIAS }}
+          SENHA_CHAVE: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          jks="$RUNNER_TEMP/ufac_no_bolso.jks"
+          echo "$CHAVE_B64" | base64 --decode > "$jks"
+          {
+            echo "storeFile=$jks"
+            echo "storePassword=$SENHA_ARQUIVO"
+            echo "keyAlias=$APELIDO"
+            echo "keyPassword=${SENHA_CHAVE:-$SENHA_ARQUIVO}"
+          } > android/key.properties
+
+      - name: Compilar APK oficial
+        if: steps.modo.outputs.modo == 'oficial'
+        run: flutter build apk --release --dart-define-from-file=.env.json
+
+      - name: Conferir a assinatura (tem que ser a de sempre)
+        if: steps.modo.outputs.modo == 'oficial'
+        run: |
+          apk=build/app/outputs/flutter-apk/app-release.apk
+          sha1=$(keytool -printcert -jarfile "$apk" | grep -m1 'SHA1:' | sed 's/.*SHA1:[[:space:]]*//')
+          if [ "$sha1" != "$SHA1_OFICIAL" ]; then
+            echo "::error::A assinatura do APK não é a chave oficial (veio $sha1). Esse APK NÃO instalaria por cima. Confira os Secrets."
+            exit 1
+          fi
+          echo "Assinatura oficial conferida."
+
+      # ---------- Modo TESTE ----------
+      # A chave de teste fica guardada no cache do GitHub, para que a próxima cópia de teste
+      # instale por cima da anterior. Se o cache expirar (7 dias sem uso), basta desinstalar
+      # só o "UFAC+ (teste)" e instalar de novo.
+      - name: Reaproveitar a chave de teste
+        if: steps.modo.outputs.modo == 'teste'
+        uses: actions/cache@v4
+        with:
+          path: ~/.android/debug.keystore
+          key: chave-teste-ufac-plus
+
+      - name: Transformar em "UFAC+ (teste)" (só no computador do robô, sem commit)
+        if: steps.modo.outputs.modo == 'teste'
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          g = Path("android/app/build.gradle.kts")
+          t = g.read_text()
+          trecho = "        release {\n"
+          assert trecho in t, "bloco release não encontrado no build.gradle.kts"
+          t = t.replace(trecho, trecho +
+              '            applicationIdSuffix = ".teste"\n'
+              '            signingConfig = signingConfigs.getByName("debug")\n', 1)
+          g.write_text(t)
+          m = Path("android/app/src/main/AndroidManifest.xml")
+          x = m.read_text()
+          assert 'android:label="UFAC+"' in x, "nome do app não encontrado no AndroidManifest"
+          m.write_text(x.replace('android:label="UFAC+"', 'android:label="UFAC+ (teste)"', 1))
+          PY
+          rm -f android/key.properties
+
+      - name: Compilar APK de teste
+        if: steps.modo.outputs.modo == 'teste'
+        run: flutter build apk --release --target-platform android-arm64 --dart-define-from-file=.env.json
+
+      # ---------- Os dois modos ----------
+      - name: Dar nome ao APK
+        id: apk
+        run: |
+          nome="ufac-mais-${{ steps.modo.outputs.versao }}-${{ steps.modo.outputs.modo }}.apk"
+          mkdir -p saida
+          cp build/app/outputs/flutter-apk/app-release.apk "saida/$nome"
+          rm -f .env.json android/key.properties
+          echo "nome=$nome" >> "$GITHUB_OUTPUT"
+          {
+            echo "### APK pronto: \`$nome\`"
+            echo ""
+            echo "- Modo: **${{ steps.modo.outputs.modo }}**"
+            echo "- SHA-256: \`$(sha256sum "saida/$nome" | cut -d' ' -f1)\`"
+            echo "- Baixe em **Artifacts**, no fim desta página (vem dentro de um .zip)."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.apk.outputs.nome }}
+          path: android/saida/${{ steps.apk.outputs.nome }}
+          retention-days: 14
+          if-no-files-found: error

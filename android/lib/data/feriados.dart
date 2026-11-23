@@ -15,7 +15,11 @@ class AvisoFeriado {
 }
 
 // Feriados do Acre e de Rio Branco mudam de dia por decreto a cada ano, então só entram
-// depois de conferidos. 2026: Decreto estadual nº 11.809/2025 e calendário da Prefeitura.
+// depois de conferidos. A Lei estadual 2.126/2009 adia para a sexta os estaduais que caem
+// em dia útil (menos 15/06 e 06/08), e o decreto anual diz como: por isso a data é a
+// comemorada, não a da lei. Mesma lista do iPhone (iphone/web/src/lib/dominio/feriados.js).
+// 2026: Decreto estadual nº 11.809/2025, conferido na Portaria TJAC 6569/2025:
+// https://webdev.tjac.jus.br/wp-content/uploads/2025/12/Portaria_PRESI_TJAC_6569_2025.pdf
 final _locaisPorAno = <int, List<Feriado>>{
   2026: [
     Feriado(DateTime(2026, 1, 22), 'Dia do Católico', TipoFeriado.feriado), // 20/1 adiado pela Lei 2.126/2009
@@ -23,8 +27,20 @@ final _locaisPorAno = <int, List<Feriado>>{
     Feriado(DateTime(2026, 3, 8), 'Dia Internacional da Mulher', TipoFeriado.feriado),
     Feriado(DateTime(2026, 6, 15), 'Aniversário do Acre', TipoFeriado.feriado),
     Feriado(DateTime(2026, 9, 5), 'Dia da Amazônia', TipoFeriado.feriado),
-    Feriado(DateTime(2026, 11, 17), 'Tratado de Petrópolis', TipoFeriado.feriado),
+    // 17/11 adiado para 19/11 (Lei 2.126/2009), ver Portaria acima.
+    Feriado(DateTime(2026, 11, 19), 'Tratado de Petrópolis', TipoFeriado.feriado),
     Feriado(DateTime(2026, 12, 28), 'Aniversário de Rio Branco', TipoFeriado.feriado),
+  ],
+  // 2027: o decreto estadual ainda não saiu (costuma sair em dezembro). Entram só as datas
+  // que a lei fixa e que não podem ser adiadas: as de fim de semana, o 15/06 (exceção da
+  // Lei 2.126/2009) e o municipal. Ficam de fora até o decreto: Dia do Católico (20/01,
+  // quarta), Dia da Mulher (08/03, segunda) e Tratado de Petrópolis (17/11, quarta).
+  2027: [
+    Feriado(DateTime(2027, 1, 23), 'Dia do Evangélico', TipoFeriado.feriado), // sábado; Lei estadual 1.538/2004
+    Feriado(DateTime(2027, 6, 15), 'Aniversário do Acre', TipoFeriado.feriado), // Lei estadual 14/1964, sem adiamento
+    Feriado(DateTime(2027, 9, 5), 'Dia da Amazônia', TipoFeriado.feriado), // domingo; Lei estadual 243/1968
+    // Lei municipal 330/1981; a Prefeitura pode transferir por decreto.
+    Feriado(DateTime(2027, 12, 28), 'Aniversário de Rio Branco', TipoFeriado.feriado),
   ],
 };
 

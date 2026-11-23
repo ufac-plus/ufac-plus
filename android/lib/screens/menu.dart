@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../config.dart';
 import '../data/classroom.dart';
@@ -79,7 +80,9 @@ class TelaMenu extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.cores;
     final professor = Perfil.instancia.ehProfessor;
-    final atalhos = professor ? _atalhosProfessor(context) : [
+    // Como no iPhone, o mapa aparece para alunos e professores.
+    final mapa = _Atalho(Icons.map_rounded, 'Mapa do campus', () => abrirMapaCampus(context));
+    final atalhos = professor ? [..._atalhosProfessor(context), mapa] : [
       _Atalho(Icons.how_to_reg_rounded, 'Matrícula', () => _abrirSite(context, 'Matrícula', urlMatricula)),
       _Atalho(
         Icons.description_rounded,
@@ -98,6 +101,7 @@ class TelaMenu extends StatelessWidget {
         'Classroom',
         () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const TelaClassroom())),
       ),
+      mapa,
     ];
     return Scaffold(
       body: ListaDaTela(
@@ -142,6 +146,15 @@ class TelaMenu extends StatelessWidget {
         ],
       ),
     );
+  }
+}
+
+/// Abre o mapa oficial do campus no navegador, fora do app (mesmo padrão do Instagram do RU).
+Future<void> abrirMapaCampus(BuildContext context) async {
+  final mensageiro = ScaffoldMessenger.of(context);
+  final abriu = await launchUrl(Uri.parse(urlMapaCampus), mode: LaunchMode.externalApplication);
+  if (!abriu) {
+    mensageiro.showSnackBar(const SnackBar(content: Text('Não consegui abrir o mapa do campus neste celular.')));
   }
 }
 
