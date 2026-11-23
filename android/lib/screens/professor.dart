@@ -218,7 +218,7 @@ class TelaInicioProfessor extends StatelessWidget {
             if (turmas != null) _CartaoProximaAula(aula: aula),
             if (turmas != null) _CartaoParaFazer(turmas: turmas, agora: agora),
             const CartaoSaldo(tituloSaldo: 'Saldo no RU', compacto: true),
-            linhaProximaRefeicao(proximaRefeicao(agora), abrirRu),
+            linhaProximaRefeicao(proximaRefeicaoComDia(agora), abrirRu),
           ],
         );
       },

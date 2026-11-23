@@ -28,6 +28,15 @@ class CardapioDoDia {
   }
 }
 
+/// Itens do cardápio da próxima refeição, para a Início. A página do eTICKET não tem data: se a próxima é
+/// o café de amanhã, nada lido hoje serve (lista vazia); e cardápio lido em outro dia também não vale.
+List<String> itensDaProximaRefeicao(CardapioDoDia? c, ProximaRefeicao p, DateTime agora) =>
+    p.amanha || c == null || !c.valeEm(agora) ? const [] : c.itens(p.refeicao);
+
+/// Frase da Início quando ainda não há itens: "O cardápio do café de amanhã ainda não saiu".
+String fraseCardapioNaoSaiu(ProximaRefeicao p) =>
+    'O cardápio do ${p.refeicao.nomeMinusculo}${p.amanha ? ' de amanhã' : ''} ainda não saiu';
+
 /// Vale ler de novo se não há cardápio de hoje ou se falta alguma refeição,
 /// porque o eTICKET costuma publicar pouco antes do horário.
 bool cardapioPendente(CardapioDoDia? c, DateTime agora) =>

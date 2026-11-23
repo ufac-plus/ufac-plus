@@ -1,13 +1,35 @@
 import '../config.dart';
 
-/// A refeição em andamento ou a próxima. Depois do jantar, volta para o café.
-Refeicao proximaRefeicao(DateTime agora) {
+/// A próxima refeição e se ela é de amanhã (igual ao `proximaRefeicao` do app do iPhone).
+class ProximaRefeicao {
+  const ProximaRefeicao(this.refeicao, {required this.amanha});
+
+  final Refeicao refeicao;
+  final bool amanha;
+}
+
+/// A refeição em andamento ou a próxima. Do fim do jantar (19h30) até a meia-noite, é o café de amanhã,
+/// com `amanha: true`, para ninguém mostrar o café de hoje, que já passou.
+ProximaRefeicao proximaRefeicaoComDia(DateTime agora) {
   final minutos = agora.hour * 60 + agora.minute;
   for (final r in Refeicao.values) {
-    if (minutos < r.horario.fimMin) return r;
+    if (minutos < r.horario.fimMin) return ProximaRefeicao(r, amanha: false);
   }
-  return Refeicao.cafe;
+  return const ProximaRefeicao(Refeicao.cafe, amanha: true);
 }
+
+/// Só a refeição, para quem não precisa saber o dia. Depois do jantar, é o café (de amanhã).
+Refeicao proximaRefeicao(DateTime agora) => proximaRefeicaoComDia(agora).refeicao;
+
+/// Em que aba o cardápio do RU abre. Depois do jantar, fica no jantar (o último de hoje):
+/// abrir no café de hoje pareceria o cardápio de amanhã.
+Refeicao refeicaoAoAbrirRu(DateTime agora) {
+  final p = proximaRefeicaoComDia(agora);
+  return p.amanha ? Refeicao.jantar : p.refeicao;
+}
+
+/// Todas as refeições de hoje já foram servidas (do fim do jantar até a meia-noite).
+bool refeicoesDeHojeEncerradas(DateTime agora) => proximaRefeicaoComDia(agora).amanha;
 
 final _saudacao = RegExp(
   r'^(bo[am]\s+(café|cafe|almoço|almoco|jantar|janta|apetite|refeição|refeicao)|tenham?\s+um)',

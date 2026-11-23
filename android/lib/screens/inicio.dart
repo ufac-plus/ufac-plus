@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import '../config.dart';
 import '../data/academico.dart';
 import '../data/atualizacoes.dart';
+import '../data/cardapio.dart';
 import '../data/classroom.dart';
 import '../data/feriados.dart';
 import '../data/foto_perfil.dart';
@@ -51,7 +52,7 @@ class TelaInicio extends StatelessWidget {
   Widget _construir(BuildContext context, AppCores c, RepositorioPortal portal) {
     final agora = DateTime.now();
     final identificacao = portal.identificacao;
-    final refeicao = proximaRefeicao(agora);
+    final refeicao = proximaRefeicaoComDia(agora);
     final aula = proximaAula(portal.aulas ?? const [], agora);
     return ListaDaTela(
       aoAtualizar: () => _atualizar(context),
@@ -435,19 +436,21 @@ Widget cabecalhoComFaixas(BuildContext context, DateTime agora, Widget cabecalho
       },
     );
 
-/// "Próxima refeição", que abre a aba RU.
-Widget linhaProximaRefeicao(Refeicao refeicao, VoidCallback abrirRu) => ListenableBuilder(
+/// "Próxima refeição", que abre a aba RU. Depois do jantar, é "Amanhã · Café" e nunca mostra
+/// o cardápio lido hoje (a página do eTICKET não tem data).
+Widget linhaProximaRefeicao(ProximaRefeicao proxima, VoidCallback abrirRu) => ListenableBuilder(
       listenable: RepositorioRu.instancia,
       builder: (context, _) {
         final c = context.cores;
-        final itens = RepositorioRu.instancia.cardapioDeHoje?.itens(refeicao) ?? const <String>[];
+        final refeicao = proxima.refeicao;
+        final itens = itensDaProximaRefeicao(RepositorioRu.instancia.cardapioDeHoje, proxima, DateTime.now());
         return ItemLista(
           icone: Icons.restaurant_rounded,
           corIcone: c.verde,
           fundoIcone: c.verdeFundo,
-          subtitulo:
-              'Próxima refeição · ${refeicao.nome} · ${formatarHoraMin(refeicao.horario.inicioMin)} às ${formatarHoraMin(refeicao.horario.fimMin)}',
-          titulo: itens.isEmpty ? 'O cardápio ainda não saiu' : itens.first,
+          subtitulo: 'Próxima refeição · ${proxima.amanha ? 'Amanhã · ' : ''}${refeicao.nome} · '
+              '${formatarHoraMin(refeicao.horario.inicioMin)} às ${formatarHoraMin(refeicao.horario.fimMin)}',
+          titulo: itens.isEmpty ? fraseCardapioNaoSaiu(proxima) : itens.first,
           aoTocar: abrirRu,
         );
       },

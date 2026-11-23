@@ -25,7 +25,20 @@ class TelaRu extends StatefulWidget {
 }
 
 class _TelaRuState extends State<TelaRu> {
-  late Refeicao _refeicao = proximaRefeicao(DateTime.now());
+  // A aba escolhida pela pessoa vale enquanto a refeição "da hora" não muda; depois, segue o relógio.
+  // Depois do jantar, abre no jantar (ver refeicaoAoAbrirRu), como no app do iPhone.
+  Refeicao? _escolhida;
+  Refeicao? _escolhidaQuandoEra;
+
+  Refeicao get _refeicao {
+    final daHora = refeicaoAoAbrirRu(DateTime.now());
+    return _escolhida != null && _escolhidaQuandoEra == daHora ? _escolhida! : daHora;
+  }
+
+  void _escolher(Refeicao r) => setState(() {
+        _escolhida = r;
+        _escolhidaQuandoEra = refeicaoAoAbrirRu(DateTime.now());
+      });
 
   Future<void> _abrirInstagram() async {
     final abriu = await launchUrl(Uri.parse(instagramRu), mode: LaunchMode.externalApplication);
@@ -63,12 +76,21 @@ class _TelaRuState extends State<TelaRu> {
       );
     }
     final semLeitura = ru.cardapioDeHoje == null;
+    final agora = DateTime.now();
+    // Refeição de hoje que já terminou sem cardápio: não dizer que "ainda vai sair".
+    final jaPassou = agora.hour * 60 + agora.minute >= _refeicao.horario.fimMin;
     return EstadoVazio(
       icone: semLeitura ? Icons.wifi_off_rounded : Icons.schedule_rounded,
       titulo: semLeitura
           ? 'Não consegui ler o cardápio agora'
-          : 'O cardápio do ${_refeicao.nomeMinusculo} ainda não saiu',
-      texto: semLeitura ? 'Confira sua internet ou entre de novo no eTICKET.' : 'Costuma aparecer perto do horário.',
+          : jaPassou
+              ? 'O eTICKET não publicou o cardápio do ${_refeicao.nomeMinusculo} de hoje'
+              : 'O cardápio do ${_refeicao.nomeMinusculo} ainda não saiu',
+      texto: semLeitura
+          ? 'Confira sua internet ou entre de novo no eTICKET.'
+          : jaPassou
+              ? null
+              : 'Costuma aparecer perto do horário.',
       acao: BotaoContorno(
         texto: 'Ver no Instagram do RU',
         icone: Icons.open_in_new_rounded,
@@ -88,8 +110,10 @@ class _TelaRuState extends State<TelaRu> {
 
   Widget _construir(BuildContext context, RepositorioRu ru) {
     final c = context.cores;
-    final itens = ru.cardapioDeHoje?.itens(_refeicao) ?? const <String>[];
-    final h = _refeicao.horario;
+    final refeicao = _refeicao;
+    final itens = ru.cardapioDeHoje?.itens(refeicao) ?? const <String>[];
+    final h = refeicao.horario;
+    final encerrado = refeicoesDeHojeEncerradas(DateTime.now());
     return ListaDaTela(
       aoAtualizar: ru.atualizar,
       children: [
@@ -105,11 +129,16 @@ class _TelaRuState extends State<TelaRu> {
             children: [
               Text('Cardápio de hoje', style: AppTexto.tituloCartao),
               Text(formatarData(DateTime.now()), style: AppTexto.apoio.copyWith(color: c.secundario)),
+              if (encerrado)
+                Text(
+                  'As refeições de hoje já foram servidas. O cardápio de amanhã costuma sair perto de cada horário.',
+                  style: AppTexto.apoio.copyWith(color: c.secundario),
+                ),
               const SizedBox(height: 12),
               SeletorAbas(
                 rotulos: [for (final r in Refeicao.values) r.nome],
-                atual: _refeicao.index,
-                aoEscolher: (i) => setState(() => _refeicao = Refeicao.values[i]),
+                atual: refeicao.index,
+                aoEscolher: (i) => _escolher(Refeicao.values[i]),
               ),
               const SizedBox(height: 10),
               Text(
