@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../config.dart';
 import '../data/classroom.dart';
@@ -148,10 +149,18 @@ class TelaMenu extends StatelessWidget {
   }
 }
 
-/// Abre o mapa oficial do campus dentro do app (pedido de Arthur: a pessoa não sai do app).
-Future<void> abrirMapaCampus(BuildContext context) => Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => const TelaSiteOficial(titulo: 'Mapa do campus', endereco: urlMapaCampus)),
+/// Abre o mapa do campus sem sair do app (pedido de Arthur), numa aba do Chrome por cima do UFAC+
+/// (Custom Tab): a WebView do app ficava travada para arrastar e dar zoom no mapa. Se o celular não
+/// tiver como abrir a aba, usa a página oficial dentro do app.
+Future<void> abrirMapaCampus(BuildContext context) async {
+  final navegador = Navigator.of(context);
+  final abriu = await launchUrl(Uri.parse(urlMapaCampus), mode: LaunchMode.inAppBrowserView).catchError((_) => false);
+  if (!abriu) {
+    await navegador.push(
+      MaterialPageRoute<void>(builder: (_) => const TelaSiteOficial(titulo: 'Mapa do campus', endereco: urlMapaCampus)),
     );
+  }
+}
 
 List<_Atalho> _atalhosProfessor(BuildContext context) {
   void abrir(String titulo, String endereco) => Navigator.of(context).push(
