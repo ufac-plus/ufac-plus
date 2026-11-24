@@ -130,7 +130,7 @@ class _TelaNotasState extends State<TelaNotas> {
           for (final n in s.disciplinas) _CartaoNota(nota: n, atual: s.atual),
           Text(
             'É preciso ter 75% de frequência. As faltas permitidas dependem da carga horária de cada disciplina: '
-            '16 numa de 60 h, 8 numa de 30 h.',
+            '${faltasPermitidas(60)} numa de 60 h, ${faltasPermitidas(30)} numa de 30 h.',
             style: AppTexto.rotulo.copyWith(color: c.secundario),
           ),
         ],

@@ -24,11 +24,13 @@ class PaginaLida {
 
 // Issue #3: o eTICKET tem dois IPs; um entrega o certificado do portal e, no outro, cerca de metade das
 // conexões novas nunca recebe resposta (as boas respondem em ~0,35 s). O iPhone repete cada salto no Worker;
-// aqui cada tentativa é uma WebView nova, com conexão nova, e prazo curto. O Portal não repete (como no iPhone).
+// aqui cada tentativa é uma WebView nova, com prazo curto e crescente (o prazo vale para a navegação inteira).
+// As WebViews do app dividem a mesma pilha de rede do Chromium (conexões e DNS reaproveitados), então a repetição
+// ajuda mais com as conexões que não respondem do que com o IP de certificado errado. O Portal não repete.
 const esperaEntreTentativas = Duration(seconds: 1);
 
 List<Duration> prazosDasTentativas(Sistema sistema) => sistema == Sistema.eticket
-    ? const [Duration(seconds: 7), Duration(seconds: 7), Duration(seconds: 7)]
+    ? const [Duration(seconds: 6), Duration(seconds: 8), Duration(seconds: 9)]
     : const [Duration(seconds: 20)];
 
 /// Repete [tentar] enquanto a falha for de rede, até [vezes], com [espera] entre uma e outra.

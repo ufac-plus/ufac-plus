@@ -106,7 +106,11 @@ void main() {
     test('so o eTICKET repete, com prazos curtos; o Portal segue com uma tentativa', () {
       final eticket = prazosDasTentativas(Sistema.eticket);
       expect(eticket.length, greaterThan(1));
-      expect(eticket.every((p) => p <= const Duration(seconds: 8)), isTrue);
+      expect(eticket.every((p) => p <= const Duration(seconds: 10)), isTrue);
+      // Prazos crescentes: o prazo vale para a navegação inteira, e num 4G lento a última tentativa precisa de folga.
+      for (var i = 1; i < eticket.length; i++) {
+        expect(eticket[i] >= eticket[i - 1], isTrue);
+      }
       // Somando as esperas, não passa muito do limite que já existia (20 s), como os 25 s do iPhone.
       final total = eticket.fold(Duration.zero, (a, b) => a + b) + esperaEntreTentativas * (eticket.length - 1);
       expect(total, lessThanOrEqualTo(const Duration(seconds: 25)));

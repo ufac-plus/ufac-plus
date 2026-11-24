@@ -125,7 +125,7 @@ class TelaMenu extends StatelessWidget {
           ),
           if (!professor)
             ItemLista(
-              icone: Icons.campaign_rounded,
+              icone: Icons.article_rounded,
               corIcone: c.navAtivo,
               fundoIcone: c.navAtivoFundo,
               titulo: 'Editais',

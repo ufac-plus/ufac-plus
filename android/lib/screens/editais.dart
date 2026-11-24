@@ -44,6 +44,9 @@ class _TelaEditaisState extends State<TelaEditais> {
       await widget.repositorio.ler(f, forcar: forcar);
     } on FalhaEditais catch (e) {
       falha = e.tipo;
+    } catch (_) {
+      // Qualquer outro erro (ex.: ao gravar o cache) também encerra o esqueleto, com o aviso de leitura.
+      falha = TipoFalhaEditais.naoLi;
     }
     if (!mounted) return;
     setState(() {

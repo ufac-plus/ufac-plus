@@ -134,7 +134,11 @@ class RepositorioPortal extends ChangeNotifier {
     return _lerNotas(id);
   }
 
+  // "Sair" e "Limpar dados" mudam a geração: uma leitura que termina depois não grava de volta o que foi apagado.
+  int _geracao = 0;
+
   Future<ResultadoPortal> _lerNotas(String id) async {
+    final geracao = _geracao;
     final pagina = await Sessao.instancia.lerEMarcar(Sistema.portal, url: urlNotas(id));
     if (pagina.resultado == ResultadoVerificacao.expirada) return ResultadoPortal.sessaoExpirada;
     // A lista dos semestres anteriores vem desta mesma página, sem pedido a mais.
@@ -143,6 +147,7 @@ class RepositorioPortal extends ChangeNotifier {
     final lista = semestres.first;
     final (lidas, resultado) = await _lerDisciplinas(lista.disciplinas, notas);
     if (lidas == null) return resultado;
+    if (geracao != _geracao) return ResultadoPortal.falhou;
     notas = lidas;
     semestreDasNotas = lista.semestre;
     notasLidasEm = DateTime.now();
@@ -213,9 +218,11 @@ class RepositorioPortal extends ChangeNotifier {
     if (lista == null || _lendo.contains(nome)) return ResultadoPortal.falhou;
     _lendo.add(nome);
     notifyListeners();
+    final geracao = _geracao;
     try {
       final (lidas, resultado) = await _lerDisciplinas(lista.disciplinas, _anteriores[nome]?.disciplinas);
       if (lidas == null) return resultado;
+      if (geracao != _geracao) return ResultadoPortal.falhou;
       _anteriores[nome] = SemestreDeNotas(nome, lidas, DateTime.now(), atual: false);
       await _gravarNotas();
       return ResultadoPortal.atualizado;
@@ -273,6 +280,7 @@ class RepositorioPortal extends ChangeNotifier {
 
   /// "Limpar dados salvos": o banco é apagado pelo repositório do RU; aqui só a memória.
   void limparCache() {
+    _geracao++;
     identificacao = null;
     aulas = null;
     notas = null;
@@ -284,6 +292,7 @@ class RepositorioPortal extends ChangeNotifier {
   }
 
   void limpar() {
+    _geracao++;
     _idInterno = null;
     identificacao = null;
     matricula = null;
