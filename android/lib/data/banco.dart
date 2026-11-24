@@ -33,6 +33,14 @@ class Banco {
     }, conflictAlgorithm: ConflictAlgorithm.replace);
   }
 
+  static Future<void> apagar(String chave) async {
+    if (memoria case final m?) {
+      m.remove(chave);
+      return;
+    }
+    await (await _abrir()).delete('cache', where: 'chave = ?', whereArgs: [chave]);
+  }
+
   static Future<void> apagarTudo() async {
     if (memoria case final m?) return m.clear();
     await (await _abrir()).delete('cache');

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../theme/app_cores.dart';
 import '../theme/app_medidas.dart';
@@ -225,6 +226,7 @@ class ItemLista extends StatelessWidget {
     required this.titulo,
     this.subtitulo,
     required this.aoTocar,
+    this.iconeFim = Icons.chevron_right_rounded,
   });
 
   final IconData icone;
@@ -232,6 +234,9 @@ class ItemLista extends StatelessWidget {
   final String titulo;
   final String? subtitulo;
   final VoidCallback aoTocar;
+
+  /// Seta no fim; [Icons.open_in_new_rounded] quando abre fora do app.
+  final IconData iconeFim;
 
   @override
   Widget build(BuildContext context) {
@@ -251,7 +256,7 @@ class ItemLista extends StatelessWidget {
               ],
             ),
           ),
-          Icon(Icons.chevron_right_rounded, color: c.secundario),
+          Icon(iconeFim, color: c.secundario),
         ],
       ),
     );
@@ -436,4 +441,23 @@ TextSpan spanMoeda(String texto, TextStyle estilo) {
         ),
     ],
   );
+}
+
+/// Quem abre o navegador; os testes trocam por um falso.
+Future<bool> Function(Uri, LaunchMode) abridorExterno = (u, modo) => launchUrl(u, mode: modo);
+
+/// Abre o endereço no navegador do celular (Chrome), fora do app. Se não der, avisa com [falha].
+Future<void> abrirForaDoApp(BuildContext context, Uri endereco, {required String falha}) async {
+  final mensageiro = ScaffoldMessenger.of(context);
+  bool abriu;
+  try {
+    abriu = await abridorExterno(endereco, LaunchMode.externalApplication);
+  } catch (_) {
+    abriu = false;
+  }
+  if (!abriu) {
+    mensageiro
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(content: Text(falha)));
+  }
 }
