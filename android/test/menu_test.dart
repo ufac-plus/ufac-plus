@@ -4,9 +4,11 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ufac_no_bolso/config.dart';
+import 'package:ufac_no_bolso/data/banco.dart';
 import 'package:ufac_no_bolso/data/editais.dart';
 import 'package:ufac_no_bolso/data/perfil.dart';
 import 'package:ufac_no_bolso/screens/editais.dart';
+import 'package:ufac_no_bolso/screens/mapa_campus.dart';
 import 'package:ufac_no_bolso/screens/menu.dart';
 import 'package:ufac_no_bolso/theme/app_tema.dart';
 import 'package:ufac_no_bolso/ui/componentes.dart';
@@ -19,6 +21,7 @@ void main() {
   late bool abre;
 
   setUp(() {
+    Banco.memoria = {};
     abertos = [];
     abre = true;
     abridorExterno = (u, modo) async {
@@ -37,7 +40,7 @@ void main() {
     expect(find.text('Editais'), findsOneWidget);
     expect(find.text('Proaes, Prograd e Proex'), findsOneWidget);
     expect(find.text('Mapa do campus'), findsOneWidget);
-    expect(find.text('Blocos e setores · site oficial da Ufac'), findsOneWidget);
+    expect(find.text('Prédios e setores do Campus Sede, com busca'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
@@ -48,20 +51,15 @@ void main() {
     expect(find.text('Mapa do campus'), findsOneWidget);
   });
 
-  testWidgets('o mapa abre numa aba do Chrome por cima do app', (tester) async {
+  testWidgets('o mapa abre dentro do app, sem o site pesado da Ufac', (tester) async {
+    TelaMapaCampus.mostrarFundo = false;
+    addTearDown(() => TelaMapaCampus.mostrarFundo = true);
     await tester.pumpWidget(app(const TelaMenu()));
     await tester.tap(find.text('Mapa do campus'));
     await tester.pump();
-    expect(abertos, [(Uri.parse(urlMapaCampus), LaunchMode.inAppBrowserView)]);
-    expect(find.byType(SnackBar), findsNothing);
-  });
-
-  testWidgets('se o navegador não abrir, avisa em linguagem humana', (tester) async {
-    abre = false;
-    await tester.pumpWidget(app(const TelaMenu()));
-    await tester.tap(find.text('Mapa do campus'));
-    await tester.pump();
-    expect(find.text('Não consegui abrir o navegador neste celular.'), findsOneWidget);
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(find.byType(TelaMapaCampus), findsOneWidget);
+    expect(abertos, isEmpty, reason: 'não abre o navegador');
   });
 
   group('tela de Editais', () {

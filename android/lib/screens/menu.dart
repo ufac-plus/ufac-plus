@@ -18,6 +18,7 @@ import '../ui/componentes.dart';
 import 'boas_vindas.dart';
 import 'classroom.dart';
 import 'configuracoes.dart';
+import 'mapa_campus.dart';
 import 'editais.dart';
 import 'relatorios.dart';
 import 'site_oficial.dart';
@@ -132,22 +133,13 @@ class TelaMenu extends StatelessWidget {
               subtitulo: 'Proaes, Prograd e Proex',
               aoTocar: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => TelaEditais())),
             ),
-          Semantics(
-            hint: 'Abre numa aba do Chrome',
-            child: ItemLista(
-              icone: Icons.map_rounded,
-              corIcone: c.navAtivo,
-              fundoIcone: c.navAtivoFundo,
-              titulo: 'Mapa do campus',
-              subtitulo: 'Blocos e setores · site oficial da Ufac',
-              iconeFim: Icons.open_in_new_rounded,
-              aoTocar: () => abrirForaDoApp(
-                context,
-                Uri.parse(urlMapaCampus),
-                falha: 'Não consegui abrir o navegador neste celular.',
-                abaPorCima: true,
-              ),
-            ),
+          ItemLista(
+            icone: Icons.map_rounded,
+            corIcone: c.navAtivo,
+            fundoIcone: c.navAtivoFundo,
+            titulo: 'Mapa do campus',
+            subtitulo: 'Prédios e setores do Campus Sede, com busca',
+            aoTocar: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const TelaMapaCampus())),
           ),
           Text(professor ? 'Portal do Professor' : 'Portal do Aluno', style: AppTexto.tituloCartao),
           for (var i = 0; i < atalhos.length; i += 2)

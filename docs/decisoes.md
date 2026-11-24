@@ -240,3 +240,9 @@ Prints dos temas: `flutter test test/visual_test.dart --update-goldens --tags vi
 - **Robô, modo teste:** passa a usar o `UFAC_TESTE=1` do Matheus no `build.gradle.kts` ("UFAC+ Teste", identificador `….teste`), em vez de editar arquivos na hora (o rótulo do app virou `${rotuloApp}` e a edição antiga quebraria).
 - A `claude/blissful-lovelace-…` não tinha nada que as outras duas não tivessem; não foi juntada.
 - O iPhone ainda usa 60 h como referência das faltas: falta alinhar.
+
+## 2026-11-24: Mapa do campus feito pelo app
+- O site oficial (`sistemas.ufac.br/mapa/`) é lento no celular por causa dele mesmo: usa o `tailwindcss.min.js` (a versão "de rascunho" do Tailwind, ~280 KB, que monta o visual no aparelho), Leaflet com camadas do Google e do OpenStreetMap, e fica no servidor instável do eTICKET (issue #3). Nem a WebView do app nem a aba do Chrome resolvem isso.
+- O app agora desenha o mapa (`flutter_map`) com a lista pública de prédios do próprio site: `/mapa/api/locais/?campus=SEDE` (114 prédios, com código, setor, categoria, horário, acessibilidade e coordenadas; sem login, sem cookies). Guarda por 7 dias; se a Ufac não responder, usa o que tem salvo. Tenta até 3 vezes, com prazos curtos.
+- O fundo do mapa vem do OpenStreetMap (como no site oficial), com o crédito na tela. Não vai nenhum dado da pessoa: só os quadradinhos do mapa da região do campus.
+- Busca sem acento por nome, código ("A05"), setor ou tipo; a ficha mostra horário, acessibilidade e "Como chegar" (Google Maps, a pé). Só o Campus Sede por enquanto (o Floresta, de Cruzeiro do Sul, está na mesma API).

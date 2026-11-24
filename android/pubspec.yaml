@@ -14,11 +14,13 @@ dependencies:
   flutter_file_dialog: ^3.3.5
   flutter_inappwebview: 6.2.0-beta.3
   flutter_local_notifications: ^23.0.0
+  flutter_map: ^8.3.2
   flutter_secure_storage: ^11.2.0
   google_sign_in: ^7.2.0
   html: ^0.15.7
   image_cropper: ^13.0.0
   image_picker: ^1.2.4
+  latlong2: ^0.10.1
   open_filex: ^5.0.0
   package_info_plus: ^10.2.2
   path: ^1.9.1
