@@ -214,3 +214,29 @@ Prints dos temas: `flutter test test/visual_test.dart --update-goldens --tags vi
 ## 2026-11-24: Android — Editais e Mapa do campus (issue #23, seções 3 e 4)
 - Menu › **Editais**, com três abas: **Proaes** (bolsas e auxílios), **Prograd** e **Proex** (extensão, cultura e esporte; a Proex responde na mesma API pública do Plone em `www3.ufac.br/proex/@search`). Sem login e sem cookies (HttpClient do Dart), só links `https://www3.ufac.br/`, cada edital abre no navegador. Cache de 6 h no SQLite por pró-reitoria; pasta do ano vazia → ano anterior (virada do ano no fuso de Rio Branco). "Limpar dados salvos" e "Sair" apagam esse cache.
 - Menu › **Mapa do campus** abre `sistemas.ufac.br/mapa/` no Chrome (`LaunchMode.externalApplication`), nunca numa WebView do app: o site é pesado e, dentro do app, disputava memória e processamento com a WebView escondida da Ufac, o que deixava o mapa travado. O Chrome tem motor próprio, aceleração gráfica e cache do site.
+
+## 2026-11-23: Android 0.1.14 — paridade com o iPhone 1.5 (refeito sem o PC)
+- O branch `android-paridade-iphone` original ficou só no PC (não chegou ao GitHub). Foi refeito a partir do iPhone, sem Flutter local; os testes e o APK passaram a sair do robô `.github/workflows/android.yml` (guia em `docs/compilar-no-github.md`).
+- Feriados: as mesmas decisões do iPhone em 21/11 (19/11/2026 e as datas fixas de 2027). Ainda **não** portado: a Início pular a aula em feriado.
+- Refeições: depois das 19h30 a Início mostra "Amanhã · Café" e nunca os itens lidos hoje; a aba RU abre no Jantar com "as refeições de hoje já foram servidas". Ainda **não** portado: o aviso "Igual ao de ontem".
+- Faltas: a mesma fórmula do iPhone (`faltasPermitidas`, `aulasProgramadas` em `lib/data/academico.dart`), substituindo o "16 fixo" (que continua como estimativa sem carga). A carga horária, que já era extraída mas não era usada, passa a ser lida uma vez por disciplina na página da turma e guardada. Notas mostram "Frequência X% · carga de Y h · a Nª falta reprova".
+- Exame: "Para passar, você precisa de pelo menos X no exame", com a regra do iPhone (`exameDaDisciplina`).
+- Menu: "Mapa do campus" (`https://sistemas.ufac.br/mapa/`), para aluno e professor.
+
+## 2026-11-23: Android 0.1.14 — ajustes pedidos por Arthur depois do primeiro teste
+- **Faltas:** as disciplinas de Direito têm **72 h** e a 17ª falta reprova; o app dizia "a 20ª" (supunha 60 h → 16). A referência passou a ser 72 h → 16 (`cargaReferenciaFaltas` em `config.dart`): 36 h → 8, 54 h → 12, 108 h → 24; frequência sobre carga × 8/9. O iPhone ainda usa 60 h.
+- **Semestres anteriores:** a tela Notas ganhou a pílula do semestre e a folha com todos os semestres, como no iPhone. A lista sai da mesma página de Notas (sem pedido a mais); um semestre anterior só é lido quando escolhido, fica no cache e só é relido ao puxar para atualizar nele. Substitui a decisão antiga "notas só do semestre atual".
+- **Mapa do campus:** abre numa aba do Chrome por cima do app (Custom Tab, `LaunchMode.inAppBrowserView`), porque na WebView do app o mapa ficava travado; a `TelaSiteOficial` fica de reserva se o celular não abrir a aba.
+
+## 2026-11-24: robô publica a Release do Android (só no modo oficial)
+- Arthur está sem o PC e pediu para publicar pelo GitHub. Sem a chave de assinatura não há como sair um APK que instale por cima, então a 0.1.14 oficial espera a chave entrar nos Secrets do repositório (guia em `docs/compilar-no-github.md`). A chave não tem cópia acessível pelo celular; o backup de `docs/publicar.md` continua pendente.
+- Com a chave cadastrada, o job "Publicar Release" do `android.yml` cria a `vX.Y.Z` como Latest com o APK oficial (assinatura conferida pela SHA-1) e as notas de `docs/notas-android/vX.Y.Z.md`. Só em push ao `main` ou ao `android-paridade-iphone`; nunca regrava uma Release existente. Autorizado por Arthur ("pode publicar").
+- O `android-paridade-iphone` é a 0.1.14 oficial (decisão de Arthur). Entrou nele a correção da vírgula do saldo (issue #5): `TextoMoeda` aperta o espaço em volta da vírgula em 8% do tamanho da letra.
+
+## 2026-11-24: as três branches do Android juntas no main
+- Havia três branches fazendo a paridade com o iPhone ao mesmo tempo: `android/issues-nov` (Matheus, PR #24), `android-paridade-iphone` (sessão do Claude de Arthur, sem o PC) e `claude/blissful-lovelace-…` (uma parte das mesmas issues).
+- **Base:** a PR #24 do Matheus, a mais completa (#2, #3, #5, #13, #17, #18, #21, #22, #23). Nos arquivos em conflito ficou a versão dela.
+- **Da `android-paridade-iphone` entraram:** o robô do GitHub (`.github/workflows/android.yml`, `docs/compilar-no-github.md`, `tools/configurar_assinatura_github.ps1`), as notas da 0.1.14, a referência de **72 h** para as faltas (decisão de Arthur: `cargaReferenciaFaltas` em `config.dart`; 36 h → 8, 72 h → 16, 108 h → 24) e o **Mapa numa aba do Chrome** por cima do app (`abrirForaDoApp(abaPorCima: true)`, com o navegador como reserva). O resto dela era a mesma coisa feita de outro jeito e ficou de fora, com os testes próprios.
+- **Robô, modo teste:** passa a usar o `UFAC_TESTE=1` do Matheus no `build.gradle.kts` ("UFAC+ Teste", identificador `….teste`), em vez de editar arquivos na hora (o rótulo do app virou `${rotuloApp}` e a edição antiga quebraria).
+- A `claude/blissful-lovelace-…` não tinha nada que as outras duas não tivessem; não foi juntada.
+- O iPhone ainda usa 60 h como referência das faltas: falta alinhar.

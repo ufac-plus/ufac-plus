@@ -345,17 +345,17 @@ void _cargaHoraria() {
 }
 
 void _limiteDoApp() {
-  test('limite pela carga horaria: carga x 16/60, para baixo (issue #22)', () {
+  test('limite pela carga horaria: carga x 16/72, para baixo (issue #22, referência 72 h de Arthur)', () {
     SituacaoFaltas s(String f, int? carga) => situacaoFaltas(f, cargaHoraria: carga, permitidasSemCarga: 16)!;
-    expect(s('0', 30).permitidas, 8);
-    expect(s('0', 45).permitidas, 12);
-    expect(s('0', 60).permitidas, 16);
-    expect(s('0', 75).permitidas, 20);
-    expect(s('0', 90).permitidas, 24);
-    expect(s('0', 40).permitidas, 10);
-    expect(s('8', 30).nivel, NivelFaltas.atencao);
-    expect(s('9', 30).nivel, NivelFaltas.limite);
-    expect(s('9', 30).estimado, isFalse);
+    expect(s('0', 36).permitidas, 8);
+    expect(s('0', 54).permitidas, 12);
+    expect(s('0', 72).permitidas, 16);
+    expect(s('0', 90).permitidas, 20);
+    expect(s('0', 108).permitidas, 24);
+    expect(s('0', 60).permitidas, 13);
+    expect(s('8', 36).nivel, NivelFaltas.atencao);
+    expect(s('9', 36).nivel, NivelFaltas.limite);
+    expect(s('9', 36).estimado, isFalse);
     expect(s('9', null).permitidas, 16);
     expect(s('9', null).estimado, isTrue);
   });

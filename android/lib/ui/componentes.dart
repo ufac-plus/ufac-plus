@@ -447,14 +447,20 @@ TextSpan spanMoeda(String texto, TextStyle estilo) {
 Future<bool> Function(Uri, LaunchMode) abridorExterno = (u, modo) => launchUrl(u, mode: modo);
 
 /// Abre o endereço no navegador do celular (Chrome), fora do app. Se não der, avisa com [falha].
-Future<void> abrirForaDoApp(BuildContext context, Uri endereco, {required String falha}) async {
+/// Com [abaPorCima], abre numa aba do Chrome por cima do app (Custom Tab) e, se o celular não tiver
+/// como, cai para o navegador normal.
+Future<void> abrirForaDoApp(BuildContext context, Uri endereco, {required String falha, bool abaPorCima = false}) async {
   final mensageiro = ScaffoldMessenger.of(context);
-  bool abriu;
-  try {
-    abriu = await abridorExterno(endereco, LaunchMode.externalApplication);
-  } catch (_) {
-    abriu = false;
+  Future<bool> tentar(LaunchMode modo) async {
+    try {
+      return await abridorExterno(endereco, modo);
+    } catch (_) {
+      return false;
+    }
   }
+
+  var abriu = abaPorCima && await tentar(LaunchMode.inAppBrowserView);
+  if (!abriu) abriu = await tentar(LaunchMode.externalApplication);
   if (!abriu) {
     mensageiro
       ..hideCurrentSnackBar()

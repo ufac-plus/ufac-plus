@@ -14,7 +14,8 @@ import 'package:ufac_no_bolso/session/regras_sessao.dart';
 import 'package:ufac_no_bolso/session/sessao.dart';
 import 'package:ufac_no_bolso/theme/app_tema.dart';
 
-String fixture(String nome) => File('fixtures/$nome').readAsStringSync();
+// Sem o \r do Windows: os testes montam trechos com \n (no Mac e no robô do GitHub já é assim).
+String fixture(String nome) => File('fixtures/$nome').readAsStringSync().replaceAll('\r\n', '\n');
 
 const atual = '2° Semestre / 2026';
 const anterior = '1° Semestre / 2026';
@@ -222,7 +223,7 @@ void main() {
     final comExame = lerNotasDaDisciplina(
       fixture('portal_notaturma_exame_ajax.html'),
       semestres.first.disciplinas.first,
-    ).comCargaHoraria(60);
+    ).comCargaHoraria(72);
     Banco.memoria!['notas_v2'] = jsonEncode({
       'semestre': atual,
       'lidasEm': '2026-11-20T10:00:00.000',
@@ -240,7 +241,7 @@ void main() {
 
     expect(find.bySemanticsLabel('2º / 2026, trocar semestre'), findsOneWidget);
     expect(find.text('Para passar, você precisa de pelo menos 6,5 no exame'), findsOneWidget);
-    expect(find.textContaining('Frequência 93% · carga de 60 h · a 17ª falta reprova'), findsOneWidget);
+    expect(find.textContaining('Frequência 93% · carga de 72 h · a 17ª falta reprova'), findsOneWidget);
 
     await tester.tap(find.bySemanticsLabel('2º / 2026, trocar semestre'));
     await tester.pumpAndSettle();

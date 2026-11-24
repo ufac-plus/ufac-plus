@@ -217,13 +217,14 @@ class SituacaoFaltas {
 /// Reprova quem passa de [percentual] da carga horária. Sem a carga, usa [permitidasSemCarga].
 /// O aviso começa em 75% das faltas permitidas. Null quando o portal ainda não informa faltas.
 /// Regimento Geral da Ufac, arts. 314, I, e 320, II: reprova quem não tem 75% de frequência. As 16 faltas de uma
-/// disciplina de 60 h escalam com a carga: 30 h → 8, 45 h → 12, 60 h → 16, 90 h → 24 (igual ao iPhone, issue #22).
-/// Para baixo: numa carga que não é múltipla de 15 h, arredondar para cima passaria dos 75%.
-int faltasPermitidas(int cargaHoraria) => (cargaHoraria * limiteFaltas / 60 + 1e-9).floor();
+/// disciplina de 72 h (referência de Arthur, as de Direito) escalam com a carga: 36 h → 8, 54 h → 12, 72 h → 16,
+/// 108 h → 24 (issue #22). O iPhone ainda usa 60 h como referência.
+/// Para baixo: numa carga que não é múltipla de 9 h, arredondar para cima passaria dos 75%.
+int faltasPermitidas(int cargaHoraria) => (cargaHoraria * limiteFaltas / cargaReferenciaFaltas + 1e-9).floor();
 
-/// As 16 faltas de uma disciplina de 60 h são 25% de 64 aulas programadas: carga × 16/15 (16 semanas por crédito
-/// de 15 h). É a base da frequência, igual ao iPhone: com as faltas permitidas, ela fica em 75% exatos.
-double aulasProgramadas(int cargaHoraria) => cargaHoraria * limiteFaltas / 60 / 0.25;
+/// As 16 faltas de uma disciplina de 72 h são 25% de 64 aulas programadas: carga × 8/9. Com as faltas permitidas,
+/// a frequência fica em 75% exatos.
+double aulasProgramadas(int cargaHoraria) => cargaHoraria * limiteFaltas / cargaReferenciaFaltas / 0.25;
 
 /// Sem a carga horária, usa `permitidasSemCarga` e marca `estimado`. `percentual` troca a regra por
 /// floor(carga × percentual).

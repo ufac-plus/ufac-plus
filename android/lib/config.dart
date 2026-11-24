@@ -106,8 +106,10 @@ const contatoEmail = String.fromEnvironment('CONTATO_EMAIL');
 // Repositório público com os APKs ("dono/nome"). Também vem do build.
 const repositorioAtualizacoes = String.fromEnvironment('ATUALIZACOES_REPO');
 
-// Faltas: pode ter até 16 em cada disciplina; a 17ª reprova (decisão de Arthur).
+// Faltas: 16 numa disciplina de 72 h (as de Direito); a 17ª reprova (decisão de Arthur, 23/11/2026).
+// Escala com a carga: 36 h → 8, 54 h → 12, 72 h → 16, 108 h → 24. Sem a carga lida, vale 16 como estimativa.
 const limiteFaltas = 16;
+const cargaReferenciaFaltas = 72;
 
 /// Hora do aviso diário do Classroom (com o que vence até o fim do dia seguinte).
 const horaAvisoClassroom = 19;

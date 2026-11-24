@@ -48,11 +48,11 @@ void main() {
     expect(find.text('Mapa do campus'), findsOneWidget);
   });
 
-  testWidgets('o mapa abre no navegador do celular, fora do app', (tester) async {
+  testWidgets('o mapa abre numa aba do Chrome por cima do app', (tester) async {
     await tester.pumpWidget(app(const TelaMenu()));
     await tester.tap(find.text('Mapa do campus'));
     await tester.pump();
-    expect(abertos, [(Uri.parse(urlMapaCampus), LaunchMode.externalApplication)]);
+    expect(abertos, [(Uri.parse(urlMapaCampus), LaunchMode.inAppBrowserView)]);
     expect(find.byType(SnackBar), findsNothing);
   });
 

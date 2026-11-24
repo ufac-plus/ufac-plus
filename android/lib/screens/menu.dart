@@ -133,7 +133,7 @@ class TelaMenu extends StatelessWidget {
               aoTocar: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => TelaEditais())),
             ),
           Semantics(
-            hint: 'Abre no navegador',
+            hint: 'Abre numa aba do Chrome',
             child: ItemLista(
               icone: Icons.map_rounded,
               corIcone: c.navAtivo,
@@ -145,6 +145,7 @@ class TelaMenu extends StatelessWidget {
                 context,
                 Uri.parse(urlMapaCampus),
                 falha: 'Não consegui abrir o navegador neste celular.',
+                abaPorCima: true,
               ),
             ),
           ),

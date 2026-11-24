@@ -17,7 +17,7 @@ NotasDisciplina disciplina({
   String mediaFinal = '',
   String mf = '',
   String faltas = '4',
-  int? carga = 60,
+  int? carga = 72,
 }) => NotasDisciplina(
   disciplina: 'Disciplina Exemplo',
   situacao: 'Matrícula',
@@ -34,26 +34,26 @@ NotasDisciplina disciplina({
 void main() {
   group('frequência em porcentagem (issue #13)', () {
     SituacaoFaltas s(String f, int? carga) => situacaoFaltas(f, cargaHoraria: carga, permitidasSemCarga: 16)!;
-    test('base: aulas programadas da carga (carga × 16/15), para baixo', () {
-      expect(s('0', 60).frequencia, 100);
-      expect(s('4', 60).frequencia, 93);
-      expect(s('16', 60).frequencia, 75);
-      expect(s('17', 60).frequencia, 73);
-      expect(s('8', 30).frequencia, 75);
-      expect(s('12', 45).frequencia, 75);
-      expect(s('24', 90).frequencia, 75);
-      expect(s('25', 90).frequencia, lessThan(75));
-      expect(s('10', 40).frequencia, greaterThanOrEqualTo(75));
-      expect(s('11', 40).frequencia, lessThan(75));
+    test('base: aulas programadas da carga (carga × 8/9, referência 72 h), para baixo', () {
+      expect(s('0', 72).frequencia, 100);
+      expect(s('4', 72).frequencia, 93);
+      expect(s('16', 72).frequencia, 75);
+      expect(s('17', 72).frequencia, 73);
+      expect(s('8', 36).frequencia, 75);
+      expect(s('12', 54).frequencia, 75);
+      expect(s('24', 108).frequencia, 75);
+      expect(s('25', 108).frequencia, lessThan(75));
+      expect(s('8', 40).frequencia, greaterThanOrEqualTo(75));
+      expect(s('9', 40).frequencia, lessThan(75));
     });
     test('nunca negativa; sem a carga não existe', () {
-      expect(s('200', 30).frequencia, 0);
+      expect(s('200', 36).frequencia, 0);
       expect(s('4', null).frequencia, isNull);
-      expect(s('4', 60).cargaHoraria, 60);
+      expect(s('4', 72).cargaHoraria, 72);
     });
     test('aulas programadas', () {
-      expect(aulasProgramadas(60), 64);
-      expect(aulasProgramadas(30), 32);
+      expect(aulasProgramadas(72), 64);
+      expect(aulasProgramadas(36), 32);
     });
   });
 
@@ -119,8 +119,8 @@ void main() {
       expect(e(disciplina(faltas: '10', carga: null)), isNull);
       expect(e(disciplina(faltas: '1', carga: null)), isNull);
       expect(e(disciplina(faltas: '0', carga: null)), isNotNull);
-      expect(e(disciplina(faltas: '8', carga: 30)), isNotNull);
-      expect(e(disciplina(faltas: '9', carga: 30)), isNull);
+      expect(e(disciplina(faltas: '8', carga: 36)), isNotNull);
+      expect(e(disciplina(faltas: '9', carga: 36)), isNull);
     });
     test('sem quadro de notas: nada', () {
       expect(e(const NotasDisciplina(disciplina: 'X', situacao: 'Matrícula', faltas: '0')), isNull);

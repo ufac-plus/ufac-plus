@@ -260,6 +260,7 @@ ufac_no_bolso/
   - Testes: `flutter test --exclude-tags visual`
   - Prints dos temas: `flutter test test/visual_test.dart --update-goldens --tags visual` (saem em `test/goldens/`)
   - APK final: `flutter build apk --release --dart-define-from-file=.env.json`
+  - **Sem PC:** o robô do GitHub (`.github/workflows/android.yml`) roda os testes e gera o APK a cada push em `android/`. Guia: `docs/compilar-no-github.md`.
   - Instalar por cima: `adb -s <serial> install -r build/app/outputs/flutter-apk/app-release.apk`
 - **`.env.json` (fora do git):** `CONTATO_EMAIL` (valor em `CLAUDE.local.md`), `ATUALIZACOES_REPO` (`ufac-plus/ufac-plus`) e, opcional, `CONTATO_WHATSAPP`. Os valores vão dentro do APK, que é público.
 - **Chave de assinatura:** fora do repositório (caminho em `CLAUDE.local.md`; `ufac_no_bolso.jks` + `key.properties`, com cópia em `android/android/key.properties`). SHA-1 pública: `7D:85:A3:3B:3D:30:45:02:4A:20:CD:0A:81:53:EC:F1:CD:60:8E:BA`. Nunca mostrar a senha.
@@ -304,8 +305,8 @@ ufac_no_bolso/
   - Extratores em Dart, sobre o HTML, testáveis com fixtures (em vez de JS injetado).
   - O número do QR é a matrícula. A matrícula fica sempre visível na Início, mas só no cofre, nunca no SQLite.
 - **Notas e faltas:**
-  - Faltas: até **16 são permitidas** e a **17ª reprova** (decisão final de Arthur). O aviso começa em 12. Os 25% da carga horária foram descartados.
-  - Notas: só do semestre atual, sempre com a data da leitura.
+  - Faltas: numa disciplina de 72 h (Direito), até **16 são permitidas** e a **17ª reprova** (decisão de Arthur); desde a 0.1.14 o limite escala com a carga horária de cada disciplina (`faltasPermitidas`, igual ao iPhone). Sem a carga, vale 16 como estimativa.
+  - Notas: o semestre atual e, desde a 0.1.14, os anteriores (lidos só quando escolhidos, em cache), sempre com a data da leitura.
 - **Feriados:** lista local. Os nacionais e móveis são calculados. Os do Acre e de Rio Branco entram só depois de conferidos: hoje só 2026. Carnaval e Corpus Christi são pontos facultativos ("Confira se há aula").
 - **Visual:**
   - Nome: UFAC+.
