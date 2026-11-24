@@ -36,10 +36,13 @@ String _limpo(String texto) => texto.replaceAll(RegExp(r'\s+'), ' ').trim();
 String nomeApresentavel(String nome) {
   if (nome != nome.toUpperCase()) return nome;
   const minusculas = {'de', 'da', 'do', 'das', 'dos', 'e'};
-  return nome.split(' ').map((p) {
-    final m = p.toLowerCase();
-    return minusculas.contains(m) || m.isEmpty ? m : '${m[0].toUpperCase()}${m.substring(1)}';
-  }).join(' ');
+  return nome
+      .split(' ')
+      .map((p) {
+        final m = p.toLowerCase();
+        return minusculas.contains(m) || m.isEmpty ? m : '${m[0].toUpperCase()}${m.substring(1)}';
+      })
+      .join(' ');
 }
 
 /// Lê a página de Relatórios, que traz o quadro com matrícula, curso e período.
@@ -67,6 +70,20 @@ class DisciplinaDoSemestre {
   const DisciplinaDoSemestre(this.disciplina, this.situacao, this.urlNotas, {this.urlTurma});
   final String disciplina, situacao;
   final String? urlNotas, urlTurma;
+
+  Map<String, String> paraMapa() => {
+    'disciplina': disciplina,
+    'situacao': situacao,
+    'urlNotas': ?urlNotas,
+    'urlTurma': ?urlTurma,
+  };
+
+  static DisciplinaDoSemestre deMapa(Map<String, dynamic> m) => DisciplinaDoSemestre(
+    m['disciplina'] as String,
+    m['situacao'] as String,
+    m['urlNotas'] as String?,
+    urlTurma: m['urlTurma'] as String?,
+  );
 }
 
 /// A carga horária fica na página da turma ("Carga Horária ...: 60").
@@ -84,14 +101,19 @@ class ListaDeNotas {
   const ListaDeNotas(this.semestre, this.disciplinas);
   final String semestre;
   final List<DisciplinaDoSemestre> disciplinas;
+
+  Map<String, Object> paraMapa() => {
+    'semestre': semestre,
+    'disciplinas': [for (final d in disciplinas) d.paraMapa()],
+  };
+
+  static ListaDeNotas deMapa(Map<String, dynamic> m) => ListaDeNotas(m['semestre'] as String, [
+    for (final d in m['disciplinas'] as List) DisciplinaDoSemestre.deMapa(d as Map<String, dynamic>),
+  ]);
 }
 
-/// Lê a página de Notas. O semestre mais recente vem primeiro; os antigos ficam de fora
-/// para não fazer dezenas de pedidos à Ufac.
-ListaDeNotas? lerListaDeNotas(String pagina) {
-  final titulo = html.parse(pagina).querySelector('a.accordionTurma');
-  final tabela = titulo?.parent?.nextElementSibling?.querySelector('table.table-turmas');
-  if (titulo == null || tabela == null) return null;
+/// Disciplinas de um bloco (um semestre) da página de Notas.
+List<DisciplinaDoSemestre> _disciplinasDoBloco(Element tabela) {
   final disciplinas = <DisciplinaDoSemestre>[];
   for (final linha in tabela.querySelectorAll('tbody tr')) {
     final celulas = linha.children;
@@ -113,8 +135,42 @@ ListaDeNotas? lerListaDeNotas(String pagina) {
       ),
     );
   }
-  return ListaDeNotas(_limpo(titulo.text), disciplinas);
+  return disciplinas;
 }
+
+/// "2° Semestre / 2026" vira 20262, para ordenar do mais recente para o mais antigo.
+int _ordemDoSemestre(String nome) {
+  final m = RegExp(r'(\d+)\D+(\d{4})').firstMatch(nome);
+  return m == null ? -1 : int.parse(m[2]!) * 10 + int.parse(m[1]!);
+}
+
+/// Página de Notas: todos os semestres, o mais recente primeiro. A tabela de cada semestre já vem no HTML; o quadro
+/// de cada disciplina, não (é o notaturma, pedido à parte). Null se não for a página de Notas.
+List<ListaDeNotas>? lerSemestresDeNotas(String pagina) {
+  final titulos = html.parse(pagina).querySelectorAll('a.accordionTurma');
+  final blocos = [
+    for (final (i, titulo) in titulos.indexed)
+      (
+        posicao: i,
+        semestre: _limpo(titulo.text),
+        tabela: titulo.parent?.nextElementSibling?.querySelector('table.table-turmas'),
+      ),
+  ];
+  // Empate desfeito pela posição: semestre com nome fora do padrão fica onde a página o pôs, depois dos reconhecidos.
+  blocos.sort((a, b) {
+    final ordem = _ordemDoSemestre(b.semestre).compareTo(_ordemDoSemestre(a.semestre));
+    return ordem != 0 ? ordem : a.posicao.compareTo(b.posicao);
+  });
+  // O mais recente sem tabela é layout desconhecido: pulá-lo faria um semestre encerrado virar o atual.
+  if (blocos.isEmpty || blocos.first.tabela == null) return null;
+  return [
+    for (final b in blocos)
+      if (b.tabela case final tabela?) ListaDeNotas(b.semestre, _disciplinasDoBloco(tabela)),
+  ];
+}
+
+/// Página de Notas, só o semestre mais recente (o que as outras telas usam).
+ListaDeNotas? lerListaDeNotas(String pagina) => lerSemestresDeNotas(pagina)?.first;
 
 /// Lê o quadro de notas de uma disciplina. Se ainda não houver quadro, volta sem notas,
 /// só com o que já veio da lista.
@@ -189,7 +245,9 @@ List<Aula>? lerHorarios(String pagina) {
   if (quadro == null) return null;
   final vistas = <String>{};
   final aulas = <Aula>[];
-  final padrao = RegExp(r'(\d{2})/(\d{2})/(\d{2})\s*-\s*(\d{2})/(\d{2})/(\d{2}).*?(\d{2}):(\d{2})\s*às\s*(\d{2}):(\d{2})');
+  final padrao = RegExp(
+    r'(\d{2})/(\d{2})/(\d{2})\s*-\s*(\d{2})/(\d{2})/(\d{2}).*?(\d{2}):(\d{2})\s*às\s*(\d{2}):(\d{2})',
+  );
   for (final linha in quadro.querySelectorAll('tbody tr')) {
     final celulas = linha.children;
     for (var coluna = 1; coluna < celulas.length && coluna <= 7; coluna++) {

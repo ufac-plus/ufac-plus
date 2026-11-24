@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import '../config.dart';
 
 /// Dados do Portal. A matrícula não entra aqui: ela é igual ao número do QR e fica no cofre.
@@ -191,12 +193,25 @@ String semestreCurto(String semestre) {
 enum NivelFaltas { tranquilo, atencao, limite }
 
 class SituacaoFaltas {
-  const SituacaoFaltas(this.faltas, this.permitidas, this.nivel, {required this.estimado});
+  const SituacaoFaltas(
+    this.faltas,
+    this.permitidas,
+    this.nivel, {
+    required this.estimado,
+    this.cargaHoraria,
+    this.frequencia,
+  });
   final int faltas, permitidas;
   final NivelFaltas nivel;
 
   /// True quando a carga horária não foi lida e o limite é o padrão.
   final bool estimado;
+
+  /// Null sem a carga horária.
+  final int? cargaHoraria;
+
+  /// De 0 a 100, arredondada para baixo para nunca parecer maior do que é (issue #13). Null sem a carga horária.
+  final int? frequencia;
 }
 
 /// Reprova quem passa de [percentual] da carga horária. Sem a carga, usa [permitidasSemCarga].
@@ -205,6 +220,10 @@ class SituacaoFaltas {
 /// disciplina de 60 h escalam com a carga: 30 h → 8, 45 h → 12, 60 h → 16, 90 h → 24 (igual ao iPhone, issue #22).
 /// Para baixo: numa carga que não é múltipla de 15 h, arredondar para cima passaria dos 75%.
 int faltasPermitidas(int cargaHoraria) => (cargaHoraria * limiteFaltas / 60 + 1e-9).floor();
+
+/// As 16 faltas de uma disciplina de 60 h são 25% de 64 aulas programadas: carga × 16/15 (16 semanas por crédito
+/// de 15 h). É a base da frequência, igual ao iPhone: com as faltas permitidas, ela fica em 75% exatos.
+double aulasProgramadas(int cargaHoraria) => cargaHoraria * limiteFaltas / 60 / 0.25;
 
 /// Sem a carga horária, usa `permitidasSemCarga` e marca `estimado`. `percentual` troca a regra por
 /// floor(carga × percentual).
@@ -228,7 +247,13 @@ SituacaoFaltas? situacaoFaltas(
       : n >= aviso
       ? NivelFaltas.atencao
       : NivelFaltas.tranquilo;
-  return SituacaoFaltas(n, permitidas, nivel, estimado: carga == null);
+  final base = carga == null
+      ? null
+      : percentual != null
+      ? carga.toDouble()
+      : aulasProgramadas(carga);
+  final frequencia = base == null ? null : max(0, ((base - n) / base * 100 + 1e-9).floor());
+  return SituacaoFaltas(n, permitidas, nivel, estimado: carga == null, cargaHoraria: carga, frequencia: frequencia);
 }
 
 /// O quadro de horários e a lista de notas escrevem o nome com detalhes diferentes.
@@ -238,4 +263,50 @@ String nomeDeDisciplinaComparavel(String nome) =>
 NotasDisciplina? notasDaDisciplina(List<NotasDisciplina>? notas, String disciplina) {
   final alvo = nomeDeDisciplinaComparavel(disciplina);
   return notas?.where((n) => nomeDeDisciplinaComparavel(n.disciplina) == alvo).firstOrNull;
+}
+
+/// "6,50", "6.5" ou 7 viram número; vazio, "—" e texto, null.
+double? lerNumero(Object? valor) {
+  if (valor is num) return valor.isFinite ? valor.toDouble() : null;
+  final t = (valor as String? ?? '').trim();
+  return RegExp(r'^\d+([.,]\d+)?$').hasMatch(t) ? double.parse(t.replaceFirst(',', '.')) : null;
+}
+
+/// 6.5 vira "6,5".
+String formatarNota(double n, [int casas = 1]) => n.toStringAsFixed(casas).replaceFirst('.', ',');
+
+/// Regimento Geral da Ufac (Res. CONSU 33/2011, alterada pelas 43/2011 e 50/2013): com média parcial (MP) 8 ou
+/// mais passa sem exame (art. 316); MP zero não tem exame (art. 317); MF = (MP + EF) ÷ 2 (art. 319) e reprova com
+/// MF abaixo de 5 (art. 320, III). Logo EF = 10 − MP, arredondado para cima na 1ª casa, para nunca faltar.
+double? notaNecessariaNoExame(double? mp) {
+  if (mp == null || !(mp > 0 && mp < 8)) return null;
+  return ((10 - mp) * 10 - 1e-9).ceil() / 10;
+}
+
+class ExameNecessario {
+  const ExameNecessario(this.mediaParcial, this.necessaria);
+  final double mediaParcial, necessaria;
+}
+
+String _doResumo(NotasDisciplina d, String rotulo) =>
+    d.resumo.where((r) => r.rotulo.trim().toLowerCase() == rotulo).firstOrNull?.valor ?? '';
+
+/// Nota mínima no exame, só no semestre atual e só enquanto o portal não lançou exame nem média final (o que ele
+/// disser vale mais). Exige todas as notas lançadas (senão a MP ainda vai mudar) e as faltas dentro do limite
+/// (art. 317), conhecido pela carga horária. Null quando não se aplica.
+ExameNecessario? exameDaDisciplina(NotasDisciplina? d, {required bool atual}) {
+  if (!atual || d == null || d.notas.isEmpty) return null;
+  if (d.notas.any((n) => lerNumero(n.total) == null)) return null;
+  if (lerNumero(_doResumo(d, 'exame')) != null ||
+      lerNumero(_doResumo(d, 'média final')) != null ||
+      lerNumero(d.media) != null) {
+    return null;
+  }
+  final faltas = situacaoFaltas(d.faltas, cargaHoraria: d.cargaHoraria, permitidasSemCarga: limiteFaltas);
+  if (faltas?.nivel == NivelFaltas.limite) return null;
+  // Sem a carga horária o limite é estimativa (o de 60 h): com alguma falta, pode já ter passado do limite real.
+  if (faltas != null && faltas.estimado && faltas.faltas > 0) return null;
+  final mediaParcial = lerNumero(_doResumo(d, 'média'));
+  final necessaria = notaNecessariaNoExame(mediaParcial);
+  return necessaria == null ? null : ExameNecessario(mediaParcial!, necessaria);
 }

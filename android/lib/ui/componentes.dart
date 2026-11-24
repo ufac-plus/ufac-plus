@@ -27,10 +27,7 @@ class Cartao extends StatelessWidget {
       clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: aoTocar,
-        child: Padding(
-          padding: preenchimento ?? const EdgeInsets.all(AppMedidas.interno),
-          child: child,
-        ),
+        child: Padding(padding: preenchimento ?? const EdgeInsets.all(AppMedidas.interno), child: child),
       ),
     );
   }
@@ -121,11 +118,11 @@ class IconeQuadrado extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-        width: lado,
-        height: lado,
-        decoration: BoxDecoration(color: fundo, borderRadius: BorderRadius.circular(AppMedidas.raioIcone)),
-        child: Icon(icone, color: cor, size: lado * 0.55),
-      );
+    width: lado,
+    height: lado,
+    decoration: BoxDecoration(color: fundo, borderRadius: BorderRadius.circular(AppMedidas.raioIcone)),
+    child: Icon(icone, color: cor, size: lado * 0.55),
+  );
 }
 
 /// Etiqueta em pílula ("começa em 20 min").
@@ -137,10 +134,10 @@ class Selo extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-        decoration: BoxDecoration(color: fundo, borderRadius: BorderRadius.circular(99)),
-        child: Text(texto, style: AppTexto.rotulo.copyWith(color: cor)),
-      );
+    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+    decoration: BoxDecoration(color: fundo, borderRadius: BorderRadius.circular(99)),
+    child: Text(texto, style: AppTexto.rotulo.copyWith(color: cor)),
+  );
 }
 
 /// Seletor de abas em pílula (Café · Almoço · Jantar).
@@ -205,7 +202,9 @@ class FaixaAviso extends StatelessWidget {
         children: [
           Icon(icone, color: c.chipTexto, size: 22),
           const SizedBox(width: 10),
-          Expanded(child: Text(texto, style: AppTexto.apoio.copyWith(color: c.chipTexto))),
+          Expanded(
+            child: Text(texto, style: AppTexto.apoio.copyWith(color: c.chipTexto)),
+          ),
           if (acao != null) ...[
             const SizedBox(width: 10),
             Text(acao!, style: AppTexto.corpoForte.copyWith(color: c.chipTexto)),
@@ -261,10 +260,20 @@ class ItemLista extends StatelessWidget {
 
 /// Título da tela com subtítulo e botões à direita.
 class CabecalhoTela extends StatelessWidget {
-  const CabecalhoTela({super.key, required this.titulo, this.sobretitulo, this.subtitulo, this.acoes = const []});
+  const CabecalhoTela({
+    super.key,
+    required this.titulo,
+    this.sobretitulo,
+    this.subtitulo,
+    this.abaixo,
+    this.acoes = const [],
+  });
 
   final String titulo;
   final String? sobretitulo, subtitulo;
+
+  /// Um controle no lugar do subtítulo (o seletor de semestre das Notas).
+  final Widget? abaixo;
   final List<Widget> acoes;
 
   @override
@@ -283,6 +292,7 @@ class CabecalhoTela extends StatelessWidget {
                 const SizedBox(height: 2),
                 Text(subtitulo!, style: AppTexto.apoio.copyWith(color: context.cores.secundario)),
               ],
+              if (abaixo != null) ...[const SizedBox(height: 4), abaixo!],
             ],
           ),
         ),
@@ -313,7 +323,11 @@ class EstadoVazio extends StatelessWidget {
           Text(titulo, style: AppTexto.corpoForte, textAlign: TextAlign.center),
           if (texto != null) ...[
             const SizedBox(height: 4),
-            Text(texto!, style: AppTexto.apoio.copyWith(color: c.secundario), textAlign: TextAlign.center),
+            Text(
+              texto!,
+              style: AppTexto.apoio.copyWith(color: c.secundario),
+              textAlign: TextAlign.center,
+            ),
           ],
           if (acao != null) ...[const SizedBox(height: 14), acao!],
         ],
