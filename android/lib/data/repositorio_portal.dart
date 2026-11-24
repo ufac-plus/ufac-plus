@@ -95,8 +95,13 @@ class RepositorioPortal extends ChangeNotifier {
   /// Logo depois do primeiro login a sessão está nova: é a hora de ler.
   Future<void> aoAbrirApp() async {
     // Quem pulou o Portal no login não tem o que ler: a Início mostra o botão "Entrar no Portal".
-    if (identificacao == null && Sessao.instancia.conectado(Sistema.portal)) await atualizar();
+    if (!Sessao.instancia.conectado(Sistema.portal)) return;
+    // Cache de versões antigas (até a 0.1.13) não tem a lista de semestres: lê uma vez para o seletor aparecer.
+    if (identificacao == null || (notas != null && !temListaDeSemestres)) await atualizar();
   }
+
+  /// A página de Notas já foi lida com todos os semestres (o seletor tem o que mostrar).
+  bool get temListaDeSemestres => _semestres.isNotEmpty;
 
   Future<ResultadoPortal> atualizar() async {
     if (carregando) return ResultadoPortal.falhou;

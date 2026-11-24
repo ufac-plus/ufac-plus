@@ -35,6 +35,12 @@ class _TelaNotasState extends State<TelaNotas> {
   }
 
   Future<void> _escolher() async {
+    // Sem a lista de semestres (cache antigo ou sessão que caiu): lê agora e só então abre a folha.
+    if (!_portal.temListaDeSemestres) {
+      await atualizarPortal(context);
+      if (!mounted || !_portal.temListaDeSemestres) return;
+    }
+    if (!mounted) return;
     final atual = _portal.semestreDasNotas;
     final nome = await _escolherSemestre(context, _portal.listaDeSemestres, _visto ?? atual);
     if (nome == null || !mounted) return;
@@ -92,8 +98,12 @@ class _TelaNotasState extends State<TelaNotas> {
       children: [
         CabecalhoTela(
           titulo: 'Notas',
-          subtitulo: semestres.length < 2 ? portal.semestreDasNotas : null,
-          abaixo: semestres.length < 2 || nome == null ? null : _PilulaSemestre(semestre: nome, aoTocar: _escolher),
+          // A pílula aparece sempre que há um semestre: com a lista ainda não lida, tocar nela busca a lista.
+          // Só fica escondida quando a lista já foi lida e tem um semestre só.
+          subtitulo: nome == null ? portal.semestreDasNotas : null,
+          abaixo: nome == null || (portal.temListaDeSemestres && semestres.length < 2)
+              ? null
+              : _PilulaSemestre(semestre: nome, aoTocar: _escolher),
           acoes: [BotaoRedondo(icone: Icons.menu_rounded, descricao: 'Menu', aoTocar: () => abrirMenu(context))],
         ),
         if (lidas != null)

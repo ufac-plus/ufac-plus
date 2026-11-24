@@ -31,8 +31,21 @@ class _TelaMapaCampusState extends State<TelaMapaCampus> {
   bool _carregando = true;
   String _termo = '';
   LocalCampus? _escolhido;
+  Campus _campus = Campus.sede;
 
   RepositorioMapaCampus get _repo => widget.repositorio ?? RepositorioMapaCampus.instancia;
+
+  void _trocarCampus(Campus novo) {
+    if (novo == _campus) return;
+    setState(() {
+      _campus = novo;
+      _locais = null;
+      _termo = '';
+      _busca.clear();
+    });
+    _mapa.move(LatLng(novo.centro.$1, novo.centro.$2), novo.zoom);
+    _carregar();
+  }
 
   @override
   void initState() {
@@ -49,8 +62,10 @@ class _TelaMapaCampusState extends State<TelaMapaCampus> {
 
   Future<void> _carregar({bool forcar = false}) async {
     setState(() => _carregando = true);
-    final lidos = await _repo.locais(forcar: forcar);
-    if (!mounted) return;
+    final pedido = _campus;
+    final lidos = await _repo.locais(campus: pedido, forcar: forcar);
+    // Trocou de campus enquanto lia: esta resposta não vale mais.
+    if (!mounted || pedido != _campus) return;
     setState(() {
       _locais = lidos ?? _locais;
       _carregando = false;
@@ -91,8 +106,8 @@ class _TelaMapaCampusState extends State<TelaMapaCampus> {
             child: FlutterMap(
               mapController: _mapa,
               options: MapOptions(
-                initialCenter: LatLng(centroCampusSede.$1, centroCampusSede.$2),
-                initialZoom: zoomCampusSede,
+                initialCenter: LatLng(Campus.sede.centro.$1, Campus.sede.centro.$2),
+                initialZoom: Campus.sede.zoom,
                 minZoom: 14,
                 maxZoom: 19,
                 backgroundColor: c.fundo,
@@ -168,6 +183,17 @@ class _TelaMapaCampusState extends State<TelaMapaCampus> {
                         ),
                       ),
                     ],
+                  ),
+                  const SizedBox(height: 8),
+                  Material(
+                    color: c.superficie,
+                    elevation: 2,
+                    borderRadius: BorderRadius.circular(AppMedidas.raioBotao),
+                    child: SeletorAbas(
+                      rotulos: [for (final cp in Campus.values) cp.cidade],
+                      atual: _campus.index,
+                      aoEscolher: (i) => _trocarCampus(Campus.values[i]),
+                    ),
                   ),
                   if (_termo.isNotEmpty && locais != null) ...[
                     const SizedBox(height: 8),

@@ -7,11 +7,18 @@ import 'dart:io';
 
 import 'banco.dart';
 
-const urlLocaisCampus = 'https://sistemas.ufac.br/mapa/api/locais/?campus=SEDE';
+/// Os campi do mapa oficial. Centro e zoom são os mesmos do site da Ufac.
+enum Campus {
+  sede('SEDE', 'Rio Branco', 'Campus Sede', (-9.955, -67.865), 16),
+  floresta('FLORESTA', 'Cruzeiro do Sul', 'Campus Floresta', (-7.5605, -72.7168), 17);
 
-/// Centro e zoom do Campus Sede, os mesmos do site oficial.
-const centroCampusSede = (-9.955, -67.865);
-const zoomCampusSede = 16.0;
+  const Campus(this.sigla, this.cidade, this.nome, this.centro, this.zoom);
+  final String sigla, cidade, nome;
+  final (double, double) centro;
+  final double zoom;
+
+  String get urlLocais => 'https://sistemas.ufac.br/mapa/api/locais/?campus=$sigla';
+}
 
 class LocalCampus {
   const LocalCampus({
@@ -149,11 +156,11 @@ List<LocalCampus>? lerLocaisCampus(String resposta) {
 }
 
 /// O servidor sistemas.ufac.br às vezes não responde na primeira (issue #3): tenta até 3 vezes, com prazos curtos.
-Future<String?> _buscarLocais() async {
+Future<String?> _buscarLocais(Campus campus) async {
   for (var tentativa = 0; tentativa < 3; tentativa++) {
     final cliente = HttpClient()..connectionTimeout = const Duration(seconds: 8);
     try {
-      final pedido = await cliente.getUrl(Uri.parse(urlLocaisCampus));
+      final pedido = await cliente.getUrl(Uri.parse(campus.urlLocais));
       pedido.headers.set(HttpHeaders.acceptHeader, 'application/json');
       final resposta = await pedido.close().timeout(const Duration(seconds: 12));
       final corpo = await resposta.transform(utf8.decoder).join().timeout(const Duration(seconds: 12));
@@ -168,17 +175,19 @@ Future<String?> _buscarLocais() async {
 }
 
 class RepositorioMapaCampus {
-  RepositorioMapaCampus({Future<String?> Function()? buscar}) : _buscar = buscar ?? _buscarLocais;
+  RepositorioMapaCampus({Future<String?> Function(Campus)? buscar}) : _buscar = buscar ?? _buscarLocais;
   static final instancia = RepositorioMapaCampus();
 
-  static const _chave = 'mapa_campus_v1';
   static const validade = Duration(days: 7);
 
-  final Future<String?> Function() _buscar;
+  final Future<String?> Function(Campus) _buscar;
+
+  // O Sede manteve a chave da primeira versão, para não ler de novo à toa.
+  static String _chave(Campus c) => c == Campus.sede ? 'mapa_campus_v1' : 'mapa_campus_${c.name}_v1';
 
   /// Salvo no celular e quando foi lido; null se nunca leu.
-  Future<(List<LocalCampus>, DateTime)?> salvos() async {
-    final texto = await Banco.ler(_chave);
+  Future<(List<LocalCampus>, DateTime)?> salvos([Campus campus = Campus.sede]) async {
+    final texto = await Banco.ler(_chave(campus));
     if (texto == null) return null;
     try {
       final m = jsonDecode(texto) as Map<String, dynamic>;
@@ -192,14 +201,14 @@ class RepositorioMapaCampus {
   }
 
   /// Os prédios do campus: do celular se ainda valem (ou se a Ufac não responder), senão da Ufac.
-  Future<List<LocalCampus>?> locais({bool forcar = false}) async {
-    final guardado = await salvos();
+  Future<List<LocalCampus>?> locais({Campus campus = Campus.sede, bool forcar = false}) async {
+    final guardado = await salvos(campus);
     if (!forcar && guardado != null && DateTime.now().difference(guardado.$2) < validade) return guardado.$1;
-    final resposta = await _buscar();
+    final resposta = await _buscar(campus);
     final lidos = resposta == null ? null : lerLocaisCampus(resposta);
     if (lidos == null || lidos.isEmpty) return guardado?.$1;
     await Banco.gravar(
-      _chave,
+      _chave(campus),
       jsonEncode({
         'lidoEm': DateTime.now().toIso8601String(),
         'locais': [for (final l in lidos) l.paraMapa()],

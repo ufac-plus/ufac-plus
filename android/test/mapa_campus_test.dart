@@ -38,7 +38,7 @@ void main() {
   test('guarda por 7 dias e, se a Ufac não responder, usa o que tem salvo', () async {
     var pedidos = 0;
     String? resposta = fixture();
-    final repo = RepositorioMapaCampus(buscar: () async {
+    final repo = RepositorioMapaCampus(buscar: (_) async {
       pedidos++;
       return resposta;
     });
@@ -53,7 +53,7 @@ void main() {
   testWidgets('tela: busca um prédio e abre a ficha', (tester) async {
     TelaMapaCampus.mostrarFundo = false;
     addTearDown(() => TelaMapaCampus.mostrarFundo = true);
-    final repo = RepositorioMapaCampus(buscar: () async => fixture());
+    final repo = RepositorioMapaCampus(buscar: (_) async => fixture());
     await tester.pumpWidget(MaterialApp(theme: AppTema.claro, home: TelaMapaCampus(repositorio: repo)));
     await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 50)));
     await tester.pump();
@@ -69,10 +69,31 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('tela: troca para Cruzeiro do Sul e lê os prédios do Campus Floresta', (tester) async {
+    TelaMapaCampus.mostrarFundo = false;
+    addTearDown(() => TelaMapaCampus.mostrarFundo = true);
+    final pedidos = <Campus>[];
+    const floresta = '{"locais": [{"codigo": "F01", "titulo": "Bloco Exemplo", "latitude": -7.5613, "longitude": -72.7170}]}';
+    final repo = RepositorioMapaCampus(buscar: (c) async {
+      pedidos.add(c);
+      return c == Campus.floresta ? floresta : fixture();
+    });
+    await tester.pumpWidget(MaterialApp(theme: AppTema.claro, home: TelaMapaCampus(repositorio: repo)));
+    await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 50)));
+    await tester.pump();
+    await tester.tap(find.text('Cruzeiro do Sul'));
+    await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 50)));
+    await tester.pump();
+    expect(pedidos, [Campus.sede, Campus.floresta]);
+    expect(find.text('F01'), findsOneWidget);
+    expect(find.text('A05'), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('tela: sem resposta e sem nada salvo, explica e oferece tentar de novo', (tester) async {
     TelaMapaCampus.mostrarFundo = false;
     addTearDown(() => TelaMapaCampus.mostrarFundo = true);
-    final repo = RepositorioMapaCampus(buscar: () async => null);
+    final repo = RepositorioMapaCampus(buscar: (_) async => null);
     await tester.pumpWidget(MaterialApp(theme: AppTema.claro, home: TelaMapaCampus(repositorio: repo)));
     await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 50)));
     await tester.pump();
