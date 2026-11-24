@@ -72,6 +72,26 @@ void _cardapio() {
     test('completo de hoje nao pede nova leitura', () {
       expect(cardapioPendente(CardapioDoDia(hoje, completo), hoje), isFalse);
     });
+    test('texto igual ao de ontem lido antes da refeicao fica em duvida (issue #21)', () {
+      final ontem = CardapioDoDia(DateTime(2026, 11, 3, 12), completo);
+      final cedo = CardapioDoDia(DateTime(2026, 11, 4, 6), completo, anterior: ontem);
+      expect(cedo.repetida(Refeicao.cafe), isTrue);
+      expect(cedo.repetida(Refeicao.almoco), isTrue);
+      expect(cardapioPendente(cedo, DateTime(2026, 11, 4, 6, 10)), isTrue);
+      // Lido depois de o café começar: vale (o RU repete pratos).
+      final depois = CardapioDoDia(DateTime(2026, 11, 4, 7), completo, anterior: ontem);
+      expect(depois.repetida(Refeicao.cafe), isFalse);
+      expect(depois.repetida(Refeicao.almoco), isTrue);
+      // Texto diferente do de ontem: não há dúvida.
+      final novo = CardapioDoDia(DateTime(2026, 11, 4, 6), {...completo, Refeicao.cafe: 'Cuscuz, Leite.'}, anterior: ontem);
+      expect(novo.repetida(Refeicao.cafe), isFalse);
+    });
+    test('guarda o de ontem ao gravar e ler', () {
+      final ontem = CardapioDoDia(DateTime(2026, 11, 3, 12), completo);
+      final c = CardapioDoDia.deMapa(CardapioDoDia(DateTime(2026, 11, 4, 6), completo, anterior: ontem).paraMapa())!;
+      expect(c.anterior?.lidoEm, ontem.lidoEm);
+      expect(c.repetida(Refeicao.cafe), isTrue);
+    });
     test('sobrevive a gravar e ler', () {
       final c = CardapioDoDia.deMapa(CardapioDoDia(hoje, completo).paraMapa())!;
       expect(c.lidoEm, hoje);
@@ -325,6 +345,21 @@ void _cargaHoraria() {
 }
 
 void _limiteDoApp() {
+  test('limite pela carga horaria: carga x 16/60, para baixo (issue #22)', () {
+    SituacaoFaltas s(String f, int? carga) => situacaoFaltas(f, cargaHoraria: carga, permitidasSemCarga: 16)!;
+    expect(s('0', 30).permitidas, 8);
+    expect(s('0', 45).permitidas, 12);
+    expect(s('0', 60).permitidas, 16);
+    expect(s('0', 75).permitidas, 20);
+    expect(s('0', 90).permitidas, 24);
+    expect(s('0', 40).permitidas, 10);
+    expect(s('8', 30).nivel, NivelFaltas.atencao);
+    expect(s('9', 30).nivel, NivelFaltas.limite);
+    expect(s('9', 30).estimado, isFalse);
+    expect(s('9', null).permitidas, 16);
+    expect(s('9', null).estimado, isTrue);
+  });
+
   test('limite do app: 16 ainda passa, 17 reprova', () {
     SituacaoFaltas s(String f) => situacaoFaltas(f, cargaHoraria: null, percentual: 0, permitidasSemCarga: 16)!;
     expect(s('11').nivel, NivelFaltas.tranquilo);

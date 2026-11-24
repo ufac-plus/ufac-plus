@@ -71,7 +71,7 @@ O histórico do RU é lido só ao abrir essa tela e fica salvo. Os atalhos do Me
 ## 2026-11-04: feriados
 Feriados nacionais fixos e datas móveis (calculadas pela Páscoa) valem para qualquer ano. Feriados do Acre e de Rio Branco ficam por ano, porque decretos podem mudar a data: só 2026 está na lista, conferido no Decreto estadual 11.809/2025, no calendário da Prefeitura (RBPREV) e no calendário federal (MGI). Em 2027, esses precisam ser conferidos e adicionados numa atualização do app.
 Carnaval e Corpus Christi são pontos facultativos: o aviso diz "Confira se há aula", sem afirmar que não há. Outros pontos facultativos (vésperas, Dia do Servidor, Revolução Acreana) ficaram de fora.
-**Dúvida a conferir:** 17/11/2026 (Tratado de Petrópolis) está no decreto sem adiamento, mas um trecho do calendário do TRE-AC indica comemoração em 19/11. O app usa 17/11.
+**Resolvido (issue #2):** 17/11/2026 (Tratado de Petrópolis) foi comemorado em 19/11, pela Lei estadual 2.126/2009 (Decreto 11.809/2025; Portaria TJAC 6569/2025). Desde 23/11/2026 o Android usa 19/11, como o iPhone.
 
 ## 2026-11-04: contato do relato
 Número e e-mail vêm de `.env.json` no build (`--dart-define-from-file`), fora do git. Eles vão dentro do APK, que é público nas Releases. Arthur decidiu não colocar o e-mail: sem contato, a tela avisa que ele não está configurado.
@@ -194,3 +194,23 @@ Prints dos temas: `flutter test test/visual_test.dart --update-goldens --tags vi
 - Em feriado (não ponto facultativo) a Início pula a aula, o .ics do Calendário tira o dia (EXDATE) e o Worker não manda o aviso de aula: o iPhone manda as datas de feriado dos próximos 120 dias (dado público) como `pausas`.
 - Configurações › Créditos: quem faz o UFAC+ e o que cada um fez, com o mesmo texto do site.
 - Worker: limite de 30 pedidos/min por IP em `/google/*` (Rate Limiting do Workers, com contador em memória de reserva); `localhost` só com `DEV_LOCAL=1` (issue #12).
+
+## 2026-11-23: Android — gastos do RU por mês (issue #18)
+- A versão do iPhone ainda não tem essa tela (só as listas de Refeições e Recargas), então o Android é o primeiro. Nenhuma requisição nova: o Histórico de uso ganhou a aba **Gastos**, montada só com as duas páginas do histórico do eTICKET que o app já lê.
+- Um cartão por mês, do mais recente ao mais antigo: "Gasto em refeições" (soma dos valores, com a quantidade de refeições) e "Recarregado" (soma e quantidade de recargas). Rodapé: "Soma o que aparece no histórico do eTICKET."
+- Linha sem data legível (dd/mm/aaaa) fica de fora; linha sem valor conta na quantidade, mas não soma. O app não filtra por Status/Situação, porque as fixtures só têm "Exemplo" e não sei quais valores reais existem (ex.: recarga não paga). Se aparecer um status de cancelamento, filtrar em `gastosPorMes` (`lib/data/historico.dart`).
+
+## 2026-11-24: Android — vírgula do saldo (issue #5)
+- O texto do saldo sempre foi "R$ 12,50", sem espaço. A causa é a Plus Jakarta Sans: a vírgula tem margens laterais largas, maiores à esquerda, e no tamanho do saldo (38 px, peso 800) sobravam de 10 a 16 px a mais que entre dois dígitos.
+- `spanMoeda` (lib/ui/componentes.dart) encurta o caractere antes da vírgula (−0,08 do tamanho da fonte) e a própria vírgula (−0,05); vale também para o ponto do milhar. O texto lido pelo leitor de tela não muda.
+- `test/moeda_test.dart` desenha o saldo com a fonte de verdade e mede os vãos em pixels, dígito a dígito. Só o saldo grande usa o ajuste; nos textos pequenos a diferença não aparece.
+
+## 2026-11-24: Android — eTICKET instável (issue #3)
+- O iPhone contorna no Worker (servidor), repetindo cada salto com conexão nova; isso não existe no Android, que fala direto com a Ufac pela WebView. O equivalente seguro aqui: cada leitura do eTICKET tem até 3 tentativas, de 6, 8 e 9 s (o prazo vale para a navegação inteira, e num 4G lento a última precisa de folga), cada uma numa WebView nova, com 1 s de espera entre elas (no máximo 25 s, como no iPhone; antes eram 20 s numa tentativa só). As WebViews dividem a mesma pilha de rede do Chromium, então a repetição ajuda mais com as conexões que não respondem do que com o IP de certificado errado: conferir no celular. O Portal continua com uma tentativa de 20 s, como no iPhone.
+- Certificado errado (o IP `.8` entrega o do portal): a WebView recusa sempre (`ServerTrustAuthResponseAction.CANCEL`) e a tentativa conta como "sem resposta". Antes, o Android recusava em silêncio e a página de erro chegava como se o eTICKET estivesse logado. Nunca se aceita certificado inválido.
+- Uma tentativa que já enviou o login automático não se repete, para a senha não ir duas vezes. Sem resposta não marca a sessão como expirada: o app segue com os dados salvos.
+- `lib/pdf/baixar_pdf.dart` não muda: os PDFs vêm do Portal (portal.ufac.br), não do eTICKET. A correção definitiva continua sendo da Ufac (NTI).
+
+## 2026-11-24: Android — Editais e Mapa do campus (issue #23, seções 3 e 4)
+- Menu › **Editais**, com três abas: **Proaes** (bolsas e auxílios), **Prograd** e **Proex** (extensão, cultura e esporte; a Proex responde na mesma API pública do Plone em `www3.ufac.br/proex/@search`). Sem login e sem cookies (HttpClient do Dart), só links `https://www3.ufac.br/`, cada edital abre no navegador. Cache de 6 h no SQLite por pró-reitoria; pasta do ano vazia → ano anterior (virada do ano no fuso de Rio Branco). "Limpar dados salvos" e "Sair" apagam esse cache.
+- Menu › **Mapa do campus** abre `sistemas.ufac.br/mapa/` no Chrome (`LaunchMode.externalApplication`), nunca numa WebView do app: o site é pesado e, dentro do app, disputava memória e processamento com a WebView escondida da Ufac, o que deixava o mapa travado. O Chrome tem motor próprio, aceleração gráfica e cache do site.

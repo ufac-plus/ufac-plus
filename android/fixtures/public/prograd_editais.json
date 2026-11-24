@@ -1,0 +1,54 @@
+{
+  "@id": "https://www3.ufac.br/prograd/@search?path.query=%2Fprograd%2F2026&path.depth=1&metadata_fields=effective&metadata_fields=modified",
+  "items": [
+    {
+      "@id": "https://www3.ufac.br/prograd/2026/edital-prograd-no-49-2026-concessao-de-transporte-para-realizacao-de-atividade-de-campo-2o-semestre-de-2026",
+      "@type": "Folder",
+      "description": "",
+      "effective": "2026-11-05T22:16:47+00:00",
+      "image_field": "",
+      "image_scales": null,
+      "modified": "2026-11-05T22:16:47+00:00",
+      "review_state": "published",
+      "title": "Edital Prograd nº 49/2026 - Concessão de Transporte para Realização de Atividade de Campo - 2º semestre de 2026",
+      "type_title": "Pasta"
+    },
+    {
+      "@id": "https://www3.ufac.br/prograd/2026/edital-prograd-no-48-2026-auxilio-para-realizacao-de-atividade-de-campo-2o-semestre-de-2026",
+      "@type": "Folder",
+      "description": "",
+      "effective": "2026-11-05T22:14:03+00:00",
+      "image_field": "",
+      "image_scales": null,
+      "modified": "2026-11-05T22:14:03+00:00",
+      "review_state": "published",
+      "title": "Edital Prograd nº 48/2026 - Auxílio para Realização de Atividade de Campo - 2º semestre de 2026",
+      "type_title": "Pasta"
+    },
+    {
+      "@id": "https://www3.ufac.br/prograd/2026/edital-prograd-no-47-2026-selecao-de-bolsistas-para-o-grupo-pet-agronomia",
+      "@type": "Link",
+      "description": "",
+      "effective": "2026-11-05T18:20:40+00:00",
+      "image_field": "",
+      "image_scales": null,
+      "modified": "2026-11-05T18:20:40+00:00",
+      "review_state": "published",
+      "title": "Edital Prograd nº 47/2026 - Seleção de Bolsistas para o Grupo PET Agronomia",
+      "type_title": "Link"
+    },
+    {
+      "@id": "https://www3.ufac.br/prograd/2026/edital-prograd-ndeg-46-2026-processo-seletivo-para-bolsistas-das-brinquedotecas-da-ufac-rio-branco-e-cruzeiro-do-sul",
+      "@type": "Folder",
+      "description": "",
+      "effective": "2026-10-23T21:37:36+00:00",
+      "image_field": "",
+      "image_scales": null,
+      "modified": "2026-11-11T21:20:55+00:00",
+      "review_state": "published",
+      "title": "Edital Prograd n° 46/2026 - Processo Seletivo para Bolsistas das Brinquedotecas da UFAC (Rio Branco e Cruzeiro do Sul)",
+      "type_title": "Pasta"
+    }
+  ],
+  "items_total": 4
+}

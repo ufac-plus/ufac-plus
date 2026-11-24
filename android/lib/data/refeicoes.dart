@@ -9,6 +9,10 @@ Refeicao proximaRefeicao(DateTime agora) {
   return Refeicao.cafe;
 }
 
+/// Depois do jantar, a próxima refeição é o café de amanhã. A página do eTICKET não tem data, então quem mostra o
+/// cardápio precisa saber disso para nunca exibir o café de hoje, que já passou, como se fosse o próximo (issue #21).
+bool refeicaoDeAmanha(DateTime agora) => agora.hour * 60 + agora.minute >= Refeicao.jantar.horario.fimMin;
+
 final _saudacao = RegExp(
   r'^(bo[am]\s+(café|cafe|almoço|almoco|jantar|janta|apetite|refeição|refeicao)|tenham?\s+um)',
   caseSensitive: false,

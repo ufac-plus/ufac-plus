@@ -78,7 +78,8 @@ class RepositorioRu extends ChangeNotifier {
     final textos = conteudo == null ? null : lerEticketCardapio(conteudo);
     falhouCardapio = textos == null;
     if (textos != null) {
-      _cardapio = CardapioDoDia(DateTime.now(), textos);
+      final agora = DateTime.now();
+      _cardapio = _cardapio?.seguinte(agora, textos) ?? CardapioDoDia(agora, textos);
       await Banco.gravar(_chaveCardapio, jsonEncode(_cardapio!.paraMapa()));
     }
   }

@@ -2,8 +2,18 @@
 
 const _dias = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado', 'Domingo'];
 const _meses = [
-  'janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho',
-  'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro',
+  'janeiro',
+  'fevereiro',
+  'março',
+  'abril',
+  'maio',
+  'junho',
+  'julho',
+  'agosto',
+  'setembro',
+  'outubro',
+  'novembro',
+  'dezembro',
 ];
 
 String formatarMoeda(double valor) {
@@ -13,6 +23,10 @@ String formatarMoeda(double valor) {
 }
 
 String formatarData(DateTime d) => '${_dias[d.weekday - 1]}, ${d.day} de ${_meses[d.month - 1]}';
+
+/// "6 de novembro"; com o ano ("10 de dezembro de 2025") quando não é o [anoAtual].
+String formatarDiaMes(DateTime d, {required int anoAtual}) =>
+    '${d.day} de ${_meses[d.month - 1]}${d.year == anoAtual ? '' : ' de ${d.year}'}';
 
 String formatarHora(int h, int m) => m == 0 ? '${h}h' : '${h}h${m.toString().padLeft(2, '0')}';
 
@@ -36,4 +50,10 @@ String formatarPrazoCurto(DateTime prazo, DateTime agora) {
   if (diferenca == 0) return 'hoje $hora';
   if (diferenca == 1) return 'amanhã $hora';
   return '${_dias[prazo.weekday - 1].substring(0, 3).toLowerCase()} $hora';
+}
+
+/// "Novembro de 2026"
+String formatarMesAno(DateTime d) {
+  final nome = _meses[d.month - 1];
+  return '${nome[0].toUpperCase()}${nome.substring(1)} de ${d.year}';
 }

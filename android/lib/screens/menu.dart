@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../config.dart';
 import '../data/classroom.dart';
+import '../data/editais.dart';
 import '../data/foto_perfil.dart';
 import '../data/perfil.dart';
 import '../data/preferencias.dart';
@@ -17,6 +18,7 @@ import '../ui/componentes.dart';
 import 'boas_vindas.dart';
 import 'classroom.dart';
 import 'configuracoes.dart';
+import 'editais.dart';
 import 'relatorios.dart';
 import 'site_oficial.dart';
 
@@ -48,6 +50,7 @@ Future<void> confirmarSaida(BuildContext context) async {
   RepositorioPortal.instancia.limpar();
   RepositorioProfessor.instancia.limpar();
   RepositorioBiblioteca.instancia.limparCache();
+  await RepositorioEditais.instancia.limparCache();
   await FotoPerfil.instancia.remover();
   Preferencias.instancia.limpar();
   Perfil.instancia.limpar();
@@ -63,7 +66,9 @@ class TelaMenu extends StatelessWidget {
     final id = comId == null ? null : await RepositorioPortal.instancia.garantirIdInterno();
     final endereco = comId == null || id == null ? urlPortal : comId(id);
     navegador.push(
-      MaterialPageRoute(builder: (_) => TelaSiteOficial(titulo: titulo, endereco: endereco, jsAoCarregar: js)),
+      MaterialPageRoute(
+        builder: (_) => TelaSiteOficial(titulo: titulo, endereco: endereco, jsAoCarregar: js),
+      ),
     );
   }
 
@@ -71,7 +76,9 @@ class TelaMenu extends StatelessWidget {
     final navegador = Navigator.of(context);
     final endereco = await RepositorioPortal.instancia.lerEnderecoComunicacoesDoPortal();
     navegador.push(
-      MaterialPageRoute(builder: (_) => TelaSiteOficial(titulo: 'Comunicações', endereco: endereco ?? urlPortal)),
+      MaterialPageRoute(
+        builder: (_) => TelaSiteOficial(titulo: 'Comunicações', endereco: endereco ?? urlPortal),
+      ),
     );
   }
 
@@ -79,38 +86,67 @@ class TelaMenu extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.cores;
     final professor = Perfil.instancia.ehProfessor;
-    final atalhos = professor ? _atalhosProfessor(context) : [
-      _Atalho(Icons.how_to_reg_rounded, 'Matrícula', () => _abrirSite(context, 'Matrícula', urlMatricula)),
-      _Atalho(
-        Icons.description_rounded,
-        'Relatórios',
-        () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const TelaRelatorios(comVoltar: true))),
-      ),
-      _Atalho(Icons.campaign_rounded, 'Comunicações', () => _abrirComunicacoes(context)),
-      _Atalho(
-        Icons.link_rounded,
-        'Links externos',
-        () => _abrirSite(context, 'Links externos', null, js: 'if (window.modalLinksExternos) modalLinksExternos();'),
-      ),
-      _Atalho(Icons.language_rounded, 'Abrir site completo', () => _abrirSite(context, 'Portal do Aluno', null)),
-      _Atalho(
-        Icons.school_rounded,
-        'Classroom',
-        () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const TelaClassroom())),
-      ),
-    ];
+    final atalhos = professor
+        ? _atalhosProfessor(context)
+        : [
+            _Atalho(Icons.how_to_reg_rounded, 'Matrícula', () => _abrirSite(context, 'Matrícula', urlMatricula)),
+            _Atalho(
+              Icons.description_rounded,
+              'Relatórios',
+              () =>
+                  Navigator.of(context).push(MaterialPageRoute(builder: (_) => const TelaRelatorios(comVoltar: true))),
+            ),
+            _Atalho(Icons.campaign_rounded, 'Comunicações', () => _abrirComunicacoes(context)),
+            _Atalho(
+              Icons.link_rounded,
+              'Links externos',
+              () => _abrirSite(
+                context,
+                'Links externos',
+                null,
+                js: 'if (window.modalLinksExternos) modalLinksExternos();',
+              ),
+            ),
+            _Atalho(Icons.language_rounded, 'Abrir site completo', () => _abrirSite(context, 'Portal do Aluno', null)),
+            _Atalho(
+              Icons.school_rounded,
+              'Classroom',
+              () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const TelaClassroom())),
+            ),
+          ];
     return Scaffold(
       body: ListaDaTela(
         children: [
           CabecalhoTela(
             titulo: 'Menu',
             acoes: [
-              BotaoRedondo(
-                icone: Icons.close_rounded,
-                descricao: 'Fechar',
-                aoTocar: () => Navigator.of(context).pop(),
-              ),
+              BotaoRedondo(icone: Icons.close_rounded, descricao: 'Fechar', aoTocar: () => Navigator.of(context).pop()),
             ],
+          ),
+          if (!professor)
+            ItemLista(
+              icone: Icons.article_rounded,
+              corIcone: c.navAtivo,
+              fundoIcone: c.navAtivoFundo,
+              titulo: 'Editais',
+              subtitulo: 'Proaes, Prograd e Proex',
+              aoTocar: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => TelaEditais())),
+            ),
+          Semantics(
+            hint: 'Abre no navegador',
+            child: ItemLista(
+              icone: Icons.map_rounded,
+              corIcone: c.navAtivo,
+              fundoIcone: c.navAtivoFundo,
+              titulo: 'Mapa do campus',
+              subtitulo: 'Blocos e setores · site oficial da Ufac',
+              iconeFim: Icons.open_in_new_rounded,
+              aoTocar: () => abrirForaDoApp(
+                context,
+                Uri.parse(urlMapaCampus),
+                falha: 'Não consegui abrir o navegador neste celular.',
+              ),
+            ),
           ),
           Text(professor ? 'Portal do Professor' : 'Portal do Aluno', style: AppTexto.tituloCartao),
           for (var i = 0; i < atalhos.length; i += 2)
@@ -129,9 +165,7 @@ class TelaMenu extends StatelessWidget {
             texto: 'Configurações',
             icone: Icons.settings_rounded,
             cor: c.navAtivo,
-            aoTocar: () => Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => const TelaConfiguracoes()),
-            ),
+            aoTocar: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const TelaConfiguracoes())),
           ),
           BotaoContorno(
             texto: 'Sair',
@@ -147,12 +181,26 @@ class TelaMenu extends StatelessWidget {
 
 List<_Atalho> _atalhosProfessor(BuildContext context) {
   void abrir(String titulo, String endereco) => Navigator.of(context).push(
-        MaterialPageRoute(builder: (_) => TelaSiteOficial(titulo: titulo, endereco: endereco)),
-      );
+    MaterialPageRoute(
+      builder: (_) => TelaSiteOficial(titulo: titulo, endereco: endereco),
+    ),
+  );
   return [
-    _Atalho(Icons.local_library_rounded, 'Biblioteca', () => abrir('Biblioteca', 'https://portal.ufac.br/biblioteca/pesquisa/pesquisar.action')),
-    _Atalho(Icons.link_rounded, 'Links', () => abrir('Links', 'https://portal.ufac.br/professor/professor/links/links.action')),
-    _Atalho(Icons.campaign_rounded, 'Comunicações', () => abrir('Comunicações', 'https://portal.ufac.br/comunicacoes/index.action')),
+    _Atalho(
+      Icons.local_library_rounded,
+      'Biblioteca',
+      () => abrir('Biblioteca', 'https://portal.ufac.br/biblioteca/pesquisa/pesquisar.action'),
+    ),
+    _Atalho(
+      Icons.link_rounded,
+      'Links',
+      () => abrir('Links', 'https://portal.ufac.br/professor/professor/links/links.action'),
+    ),
+    _Atalho(
+      Icons.campaign_rounded,
+      'Comunicações',
+      () => abrir('Comunicações', 'https://portal.ufac.br/comunicacoes/index.action'),
+    ),
     _Atalho(Icons.language_rounded, 'Abrir site completo', () => abrir('Portal do Professor', urlProfessorInicio)),
   ];
 }

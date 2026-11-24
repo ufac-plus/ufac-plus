@@ -14,36 +14,31 @@ class AvisoFaltas extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.cores;
-    // Limite fixo, igual para todas as disciplinas (decisão de Arthur).
-    final s = situacaoFaltas(
-      nota.faltas,
-      cargaHoraria: null,
-      percentual: 0,
-      permitidasSemCarga: limiteFaltas,
-    );
+    // Limite pela carga horária da turma; sem ela, as 16 de uma disciplina de 60 h (issue #22).
+    final s = situacaoFaltas(nota.faltas, cargaHoraria: nota.cargaHoraria, permitidasSemCarga: limiteFaltas);
     if (s == null) return const SizedBox.shrink();
     final restam = s.permitidas - s.faltas;
     final (cor, fundo, icone, texto) = switch (s.nivel) {
       NivelFaltas.limite => (
-          c.perigo,
-          c.perigoFundo,
-          Icons.error_rounded,
-          '${s.faltas} faltas · passou do limite de ${s.permitidas}',
-        ),
+        c.perigo,
+        c.perigoFundo,
+        Icons.error_rounded,
+        '${s.faltas} faltas · passou do limite de ${s.permitidas}',
+      ),
       NivelFaltas.atencao => (
-          c.chipTexto,
-          c.chipFundo,
-          Icons.warning_rounded,
-          restam == 0
-              ? '${s.faltas} de ${s.permitidas} faltas · no limite'
-              : '${s.faltas} de ${s.permitidas} faltas · ${restam == 1 ? 'resta 1' : 'restam $restam'}',
-        ),
+        c.chipTexto,
+        c.chipFundo,
+        Icons.warning_rounded,
+        restam == 0
+            ? '${s.faltas} de ${s.permitidas} faltas · no limite'
+            : '${s.faltas} de ${s.permitidas} faltas · ${restam == 1 ? 'resta 1' : 'restam $restam'}',
+      ),
       NivelFaltas.tranquilo => (
-          c.secundario,
-          c.chrome,
-          Icons.event_busy_rounded,
-          '${s.faltas} de ${s.permitidas} faltas permitidas',
-        ),
+        c.secundario,
+        c.chrome,
+        Icons.event_busy_rounded,
+        '${s.faltas} de ${s.permitidas} faltas permitidas',
+      ),
     };
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),

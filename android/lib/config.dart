@@ -25,6 +25,10 @@ const urlHistoricoRefeicoes = 'https://sistemas.ufac.br/eticket/historico/refeic
 const urlAvisosRu = 'https://sistemas.ufac.br/eticket/informacao/';
 const urlPortal = 'https://portal.ufac.br/aluno/index.action';
 
+/// Mapa oficial do campus (NTI da Ufac): blocos, setores e horários de cada prédio. É pesado e de terceiros,
+/// então abre no navegador do celular, nunca numa WebView do app.
+const urlMapaCampus = 'https://sistemas.ufac.br/mapa/';
+
 String urlMatricula(String idInterno) =>
     'https://portal.ufac.br/aluno/aluno/matricula/solicitacoes.action?matricula=$idInterno';
 String urlBiblioteca(String idInterno) =>
@@ -38,8 +42,11 @@ const urlBibliotecaHistorico =
     'https://portal.ufac.br/biblioteca/usuario/emprestimo/gridhistorico.action?_search=false&rows=100&page=1&sidx=dataRetirada&sord=desc';
 String urlAcervoPesquisa(String termo) =>
     Uri.https('portal.ufac.br', '/biblioteca/pesquisa/resultado.action', {'keyword': termo}).toString();
-String urlAcervoExemplares(String idRegistro, {String titulo = '', String autor = ''}) =>
-    Uri.https('portal.ufac.br', '/biblioteca/ajax/exemplar/itens.action', {'idRegistro': idRegistro, 'titulo': titulo, 'subtitulo': '', 'autor': autor}).toString();
+String urlAcervoExemplares(String idRegistro, {String titulo = '', String autor = ''}) => Uri.https(
+  'portal.ufac.br',
+  '/biblioteca/ajax/exemplar/itens.action',
+  {'idRegistro': idRegistro, 'titulo': titulo, 'subtitulo': '', 'autor': autor},
+).toString();
 
 enum RelatorioPortal {
   atestado('Atestado de Matrícula', 'atestadoMatricula', 'atestado_matricula.pdf'),
@@ -53,8 +60,7 @@ enum RelatorioPortal {
   const RelatorioPortal(this.nome, this.acao, this.arquivo);
   final String nome, acao, arquivo;
 
-  String url(String idInterno) =>
-      'https://portal.ufac.br/aluno/aluno/relatorio/$acao.action?matricula=$idInterno';
+  String url(String idInterno) => 'https://portal.ufac.br/aluno/aluno/relatorio/$acao.action?matricula=$idInterno';
 }
 
 String urlRelatorios(String idInterno) =>

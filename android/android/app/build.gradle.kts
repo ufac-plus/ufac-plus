@@ -37,6 +37,7 @@ android {
         // flag during build.
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+        manifestPlaceholders["rotuloApp"] = "UFAC+"
     }
 
     signingConfigs {
@@ -54,6 +55,12 @@ android {
     buildTypes {
         release {
             if (!chaveDoApk.isEmpty) signingConfig = signingConfigs.getByName("release")
+            // Versão de teste (UFAC_TESTE=1): instala ao lado do app oficial, com outro nome.
+            if (System.getenv("UFAC_TESTE") == "1") {
+                applicationIdSuffix = ".teste"
+                manifestPlaceholders["rotuloApp"] = "UFAC+ Teste"
+                signingConfig = signingConfigs.getByName("debug")
+            }
         }
     }
 }

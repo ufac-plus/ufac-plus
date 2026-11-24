@@ -12,6 +12,27 @@ import 'banco.dart';
 
 enum ResultadoPortal { atualizado, sessaoExpirada, falhou }
 
+/// Um semestre das Notas: o atual ou um já encerrado que a pessoa abriu.
+class SemestreDeNotas {
+  const SemestreDeNotas(this.semestre, this.disciplinas, this.lidasEm, {required this.atual});
+  final String semestre;
+  final List<NotasDisciplina> disciplinas;
+  final DateTime? lidasEm;
+  final bool atual;
+
+  Map<String, Object> paraMapa() => {
+    'lidasEm': ?lidasEm?.toIso8601String(),
+    'disciplinas': [for (final d in disciplinas) d.paraMapa()],
+  };
+
+  static SemestreDeNotas deMapa(String semestre, Map<String, dynamic> m) => SemestreDeNotas(
+    semestre,
+    [for (final d in m['disciplinas'] as List) NotasDisciplina.deMapa(d as Map<String, dynamic>)],
+    DateTime.tryParse(m['lidasEm'] as String? ?? ''),
+    atual: false,
+  );
+}
+
 /// Identificação e horários. A sessão do portal é curta, então o app vive do que está salvo
 /// e só lê de novo depois de um login ou quando a pessoa puxa para atualizar.
 class RepositorioPortal extends ChangeNotifier {
@@ -36,6 +57,15 @@ class RepositorioPortal extends ChangeNotifier {
   DateTime? notasLidasEm;
   bool carregando = false;
 
+  // Notas por semestre (issue #23). `notas`, `semestreDasNotas` e `notasLidasEm` continuam sendo o semestre atual,
+  // o que as outras telas usam. `_semestres` é a lista da página de Notas (com os endereços de cada disciplina) e
+  // `_anteriores` guarda, pelo nome, os semestres encerrados que a pessoa abriu.
+  List<ListaDeNotas> _semestres = [];
+  Map<String, SemestreDeNotas> _anteriores = {};
+
+  /// Semestres anteriores sendo lidos agora: podem correr junto com a leitura do atual.
+  final Set<String> _lendo = {};
+
   Future<void> carregarSalvos() async {
     matricula = await _cofre.read(key: _chaveMatricula);
     final id = await Banco.ler(_chaveId);
@@ -50,6 +80,14 @@ class RepositorioPortal extends ChangeNotifier {
       semestreDasNotas = m['semestre'] as String;
       notasLidasEm = DateTime.parse(m['lidasEm'] as String);
       notas = (m['disciplinas'] as List).map((n) => NotasDisciplina.deMapa(n as Map<String, dynamic>)).toList();
+      // Cache de antes do seletor de semestre não tem estes campos: abre só com o atual.
+      _semestres = [
+        for (final l in m['semestres'] as List? ?? const []) ListaDeNotas.deMapa(l as Map<String, dynamic>),
+      ];
+      _anteriores = {
+        for (final MapEntry(:key, :value) in (m['anteriores'] as Map<String, dynamic>? ?? const {}).entries)
+          key: SemestreDeNotas.deMapa(key, value as Map<String, dynamic>),
+      };
     }
     notifyListeners();
   }
@@ -96,30 +134,119 @@ class RepositorioPortal extends ChangeNotifier {
     return _lerNotas(id);
   }
 
+  // "Sair" e "Limpar dados" mudam a geração: uma leitura que termina depois não grava de volta o que foi apagado.
+  int _geracao = 0;
+
   Future<ResultadoPortal> _lerNotas(String id) async {
-    final sessao = Sessao.instancia;
-    final pagina = await sessao.lerEMarcar(Sistema.portal, url: urlNotas(id));
-    final lista = pagina.html == null ? null : lerListaDeNotas(pagina.html!);
-    if (lista == null) return ResultadoPortal.falhou;
-    final lidas = <NotasDisciplina>[];
-    for (final d in lista.disciplinas) {
-      final url = d.urlNotas;
-      final quadro = url == null ? null : await sessao.lerEMarcar(Sistema.portal, url: url);
-      if (url != null && quadro?.resultado != ResultadoVerificacao.ativa) return ResultadoPortal.falhou;
-      lidas.add(lerNotasDaDisciplina(quadro?.html ?? '', d));
-    }
+    final geracao = _geracao;
+    final pagina = await Sessao.instancia.lerEMarcar(Sistema.portal, url: urlNotas(id));
+    if (pagina.resultado == ResultadoVerificacao.expirada) return ResultadoPortal.sessaoExpirada;
+    // A lista dos semestres anteriores vem desta mesma página, sem pedido a mais.
+    final semestres = pagina.html == null ? null : lerSemestresDeNotas(pagina.html!);
+    if (semestres == null) return ResultadoPortal.falhou;
+    final lista = semestres.first;
+    final (lidas, resultado) = await _lerDisciplinas(lista.disciplinas, notas);
+    if (lidas == null) return resultado;
+    if (geracao != _geracao) return ResultadoPortal.falhou;
     notas = lidas;
     semestreDasNotas = lista.semestre;
     notasLidasEm = DateTime.now();
-    await Banco.gravar(
-      _chaveNotas,
-      jsonEncode({
-        'semestre': lista.semestre,
-        'lidasEm': notasLidasEm!.toIso8601String(),
-        'disciplinas': lidas.map((n) => n.paraMapa()).toList(),
-      }),
-    );
+    _semestres = semestres;
+    // Um semestre que era "anterior" e voltou a ser o atual não fica duplicado.
+    _anteriores.remove(lista.semestre);
+    await _gravarNotas();
     return ResultadoPortal.atualizado;
+  }
+
+  /// Quadro e carga horária de cada disciplina, uma por vez para não sobrecarregar o portal. A carga horária muda
+  /// pouco: vem de [salvas] e só é lida da página da turma uma vez (issue #22).
+  Future<(List<NotasDisciplina>?, ResultadoPortal)> _lerDisciplinas(
+    List<DisciplinaDoSemestre> lista,
+    List<NotasDisciplina>? salvas,
+  ) async {
+    final sessao = Sessao.instancia;
+    final lidas = <NotasDisciplina>[];
+    for (final d in lista) {
+      final url = d.urlNotas;
+      final quadro = url == null ? null : await sessao.lerEMarcar(Sistema.portal, url: url);
+      if (quadro != null && quadro.resultado != ResultadoVerificacao.ativa) {
+        final expirou = quadro.resultado == ResultadoVerificacao.expirada;
+        return (null, expirou ? ResultadoPortal.sessaoExpirada : ResultadoPortal.falhou);
+      }
+      final lida = lerNotasDaDisciplina(quadro?.html ?? '', d);
+      var carga = notasDaDisciplina(salvas, d.disciplina)?.cargaHoraria;
+      final urlTurma = d.urlTurma;
+      if (carga == null && urlTurma != null) {
+        final turma = await sessao.lerEMarcar(Sistema.portal, url: urlTurma);
+        if (turma.html != null) carga = lerCargaHoraria(turma.html!);
+      }
+      lidas.add(lida.comCargaHoraria(carga));
+    }
+    return (lidas, ResultadoPortal.atualizado);
+  }
+
+  /// Semestres para o seletor, o mais recente primeiro. Cache antigo (sem a lista) tem só o atual.
+  List<({String semestre, bool atual})> get listaDeSemestres {
+    final atual = semestreDasNotas;
+    if (atual == null) return const [];
+    final nomes = _semestres.isEmpty ? [atual] : _semestres.map((s) => s.semestre);
+    return [for (final s in nomes) (semestre: s, atual: s == atual)];
+  }
+
+  bool _eAtual(String? nome) => nome == null || nome == semestreDasNotas;
+
+  /// O semestre escolhido, do cache (null = o atual). Null se ainda não foi lido.
+  SemestreDeNotas? semestreEmCache(String? nome) {
+    final atual = semestreDasNotas, lidas = notas;
+    if (_eAtual(nome)) {
+      return atual == null || lidas == null ? null : SemestreDeNotas(atual, lidas, notasLidasEm, atual: true);
+    }
+    return _anteriores[nome];
+  }
+
+  /// Um semestre encerrado não muda: só é lido se nunca foi. O atual segue a regra de sempre (login e puxar).
+  bool precisaLer(String? nome) => semestreEmCache(nome) == null;
+
+  /// Para o esqueleto de cada semestre: o atual e um anterior podem ser lidos ao mesmo tempo.
+  bool lendoSemestre(String? nome) => _eAtual(nome) ? carregando : _lendo.contains(nome);
+
+  /// Um semestre já encerrado, só quando a pessoa o escolhe (ou puxa para atualizar nele). Não relê a página de
+  /// Notas: os endereços das disciplinas vieram com o semestre atual.
+  Future<ResultadoPortal> atualizarSemestre(String nome) async {
+    if (_eAtual(nome)) return atualizar();
+    final lista = _semestres.where((s) => s.semestre == nome).firstOrNull;
+    if (lista == null || _lendo.contains(nome)) return ResultadoPortal.falhou;
+    _lendo.add(nome);
+    notifyListeners();
+    final geracao = _geracao;
+    try {
+      final (lidas, resultado) = await _lerDisciplinas(lista.disciplinas, _anteriores[nome]?.disciplinas);
+      if (lidas == null) return resultado;
+      if (geracao != _geracao) return ResultadoPortal.falhou;
+      _anteriores[nome] = SemestreDeNotas(nome, lidas, DateTime.now(), atual: false);
+      await _gravarNotas();
+      return ResultadoPortal.atualizado;
+    } finally {
+      _lendo.remove(nome);
+      notifyListeners();
+    }
+  }
+
+  // O atual e um anterior podem terminar juntos: cada gravação leva tudo o que está na memória naquele momento e
+  // entra numa fila, para a mais antiga nunca sobrescrever a mais nova.
+  Future<void> _filaNotas = Future.value();
+
+  Future<void> _gravarNotas() {
+    final texto = jsonEncode({
+      'semestre': semestreDasNotas,
+      'lidasEm': notasLidasEm?.toIso8601String(),
+      'disciplinas': [for (final n in notas ?? const <NotasDisciplina>[]) n.paraMapa()],
+      'semestres': [for (final s in _semestres) s.paraMapa()],
+      'anteriores': {for (final MapEntry(:key, :value) in _anteriores.entries) key: value.paraMapa()},
+    });
+    final vez = _filaNotas.then((_) => Banco.gravar(_chaveNotas, texto));
+    _filaNotas = vez.catchError((Object _) {});
+    return vez;
   }
 
   Future<void> _guardarId(String id) async {
@@ -153,15 +280,19 @@ class RepositorioPortal extends ChangeNotifier {
 
   /// "Limpar dados salvos": o banco é apagado pelo repositório do RU; aqui só a memória.
   void limparCache() {
+    _geracao++;
     identificacao = null;
     aulas = null;
     notas = null;
     semestreDasNotas = null;
     notasLidasEm = null;
+    _semestres = [];
+    _anteriores = {};
     notifyListeners();
   }
 
   void limpar() {
+    _geracao++;
     _idInterno = null;
     identificacao = null;
     matricula = null;
@@ -169,6 +300,8 @@ class RepositorioPortal extends ChangeNotifier {
     notas = null;
     semestreDasNotas = null;
     notasLidasEm = null;
+    _semestres = [];
+    _anteriores = {};
     notifyListeners();
   }
 }

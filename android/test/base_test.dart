@@ -27,6 +27,12 @@ void main() {
       expect(proximaRefeicao(as(19, 29)), Refeicao.jantar);
       expect(proximaRefeicao(as(19, 30)), Refeicao.cafe);
     });
+    test('depois do jantar o cafe e o de amanha (issue #21)', () {
+      expect(refeicaoDeAmanha(as(19, 29)), isFalse);
+      expect(refeicaoDeAmanha(as(5, 0)), isFalse);
+      expect(refeicaoDeAmanha(as(19, 30)), isTrue);
+      expect(refeicaoDeAmanha(as(23, 59)), isTrue);
+    });
   });
 
   group('itensDoCardapio', () {
