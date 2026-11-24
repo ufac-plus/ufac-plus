@@ -400,3 +400,26 @@ void avisarEmBreve(BuildContext context) {
     ..hideCurrentSnackBar()
     ..showSnackBar(const SnackBar(content: Text('Isso chega numa próxima etapa.')));
 }
+
+/// Valor em reais com a vírgula (e o ponto do milhar) junto dos números (issue #5).
+/// A Plus Jakarta Sans dá à vírgula margens largas, mais à esquerda: em tamanho grande o saldo parecia "12 ,50".
+/// O espaçamento do Flutter vale depois de cada letra, então encurta o caractere antes do separador e o próprio
+/// separador, em frações do tamanho da fonte (medido em test/moeda_test.dart). O texto lido continua o mesmo.
+TextSpan spanMoeda(String texto, TextStyle estilo) {
+  final em = estilo.fontSize ?? 14;
+  bool separador(int i) => i < texto.length && (texto[i] == ',' || texto[i] == '.');
+  return TextSpan(
+    style: estilo,
+    children: [
+      for (var i = 0; i < texto.length; i++)
+        TextSpan(
+          text: texto[i],
+          style: separador(i + 1)
+              ? TextStyle(letterSpacing: -0.08 * em)
+              : separador(i)
+              ? TextStyle(letterSpacing: -0.05 * em)
+              : null,
+        ),
+    ],
+  );
+}

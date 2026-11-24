@@ -246,7 +246,7 @@ class CartaoSaldo extends StatelessWidget {
               return Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(formatarMoeda(ru.saldo!), style: AppTexto.saldo.copyWith(color: c.sobrePrimaria)),
+                  Text.rich(spanMoeda(formatarMoeda(ru.saldo!), AppTexto.saldo.copyWith(color: c.sobrePrimaria))),
                   const SizedBox(height: 2),
                   if (hora != null)
                     Text(

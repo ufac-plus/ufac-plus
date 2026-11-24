@@ -358,7 +358,7 @@ ufac_no_bolso/
 - **Dúvidas sem resposta:**
   - Feriado de 17/11/2026: resolvido (issue #2), foi comemorado em 19/11 (Lei 2.126/2009); os dois apps usam 19.
   - Ainda não vi uma disciplina em andamento com o quadro de notas parcial.
-- **Pequenos:** na leitura pelo navegador do painel, o endereço da página mostra o id interno do portal (não é a matrícula). A vírgula parece afastada do número em "12 ,50" (detalhe de fonte, não investigado).
+- **Pequenos:** na leitura pelo navegador do painel, o endereço da página mostra o id interno do portal (não é a matrícula). A vírgula afastada do número no saldo ("12 ,50") era da fonte e foi corrigida no Android (issue #5, `spanMoeda`).
 
 ### 12.8 Convenções
 - **Língua:** código, nomes e textos em português ("aoTocar", "carregando", "Não consegui…"). Comentários curtos explicam o porquê.

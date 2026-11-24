@@ -194,3 +194,8 @@ Prints dos temas: `flutter test test/visual_test.dart --update-goldens --tags vi
 - Em feriado (não ponto facultativo) a Início pula a aula, o .ics do Calendário tira o dia (EXDATE) e o Worker não manda o aviso de aula: o iPhone manda as datas de feriado dos próximos 120 dias (dado público) como `pausas`.
 - Configurações › Créditos: quem faz o UFAC+ e o que cada um fez, com o mesmo texto do site.
 - Worker: limite de 30 pedidos/min por IP em `/google/*` (Rate Limiting do Workers, com contador em memória de reserva); `localhost` só com `DEV_LOCAL=1` (issue #12).
+
+## 2026-11-24: Android — vírgula do saldo (issue #5)
+- O texto do saldo sempre foi "R$ 12,50", sem espaço. A causa é a Plus Jakarta Sans: a vírgula tem margens laterais largas, maiores à esquerda, e no tamanho do saldo (38 px, peso 800) sobravam de 10 a 16 px a mais que entre dois dígitos.
+- `spanMoeda` (lib/ui/componentes.dart) encurta o caractere antes da vírgula (−0,08 do tamanho da fonte) e a própria vírgula (−0,05); vale também para o ponto do milhar. O texto lido pelo leitor de tela não muda.
+- `test/moeda_test.dart` desenha o saldo com a fonte de verdade e mede os vãos em pixels, dígito a dígito. Só o saldo grande usa o ajuste; nos textos pequenos a diferença não aparece.
