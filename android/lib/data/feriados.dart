@@ -70,6 +70,9 @@ Feriado? _noDia(DateTime dia) {
   return feriadosDoAno(dia.year).where((f) => f.data == d).firstOrNull;
 }
 
+/// Feriado de verdade (não ponto facultativo): não há aula.
+bool semAulaPorFeriado(DateTime dia) => _noDia(dia)?.tipo == TipoFeriado.feriado;
+
 /// Aparece na véspera e no próprio dia. Nunca afirma que o RU está fechado.
 AvisoFeriado? avisoFeriado(DateTime agora) {
   final hoje = _noDia(agora);
