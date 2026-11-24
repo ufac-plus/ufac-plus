@@ -411,3 +411,31 @@ void avisarEmBreve(BuildContext context) {
     ..hideCurrentSnackBar()
     ..showSnackBar(const SnackBar(content: Text('Isso chega numa próxima etapa.')));
 }
+
+/// Valor em reais no tamanho grande. A vírgula da Plus Jakarta Sans é larga e, em 38 px, parecia
+/// solta ("12 ,50", issue #5): aperta o espaço antes e depois dela em 8% do tamanho da letra.
+class TextoMoeda extends StatelessWidget {
+  const TextoMoeda(this.texto, {super.key, required this.estilo});
+
+  final String texto;
+  final TextStyle estilo;
+
+  @override
+  Widget build(BuildContext context) {
+    final virgula = texto.lastIndexOf(',');
+    if (virgula < 1) return Text(texto, style: estilo);
+    final aperto = TextStyle(letterSpacing: -(estilo.fontSize ?? 14) * 0.08);
+    return Text.rich(
+      TextSpan(
+        style: estilo,
+        children: [
+          TextSpan(text: texto.substring(0, virgula - 1)),
+          TextSpan(text: texto[virgula - 1], style: aperto),
+          TextSpan(text: ',', style: aperto),
+          TextSpan(text: texto.substring(virgula + 1)),
+        ],
+      ),
+      semanticsLabel: texto,
+    );
+  }
+}

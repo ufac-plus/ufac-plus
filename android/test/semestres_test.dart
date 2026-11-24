@@ -10,7 +10,6 @@ import 'package:ufac_no_bolso/data/repositorio_portal.dart';
 import 'package:ufac_no_bolso/data/semestres.dart';
 import 'package:ufac_no_bolso/extractors/portal.dart';
 import 'package:ufac_no_bolso/screens/notas.dart';
-import 'package:ufac_no_bolso/session/regras_sessao.dart';
 import 'package:ufac_no_bolso/session/sessao.dart';
 import 'package:ufac_no_bolso/theme/app_tema.dart';
 

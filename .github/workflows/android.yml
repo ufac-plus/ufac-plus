@@ -8,7 +8,10 @@
 # - TESTE: sem a chave. Gera "UFAC+ (teste)", com outro identificador, que fica AO LADO
 #   do app oficial. O Classroom não funciona nela (o Google só aceita o app oficial).
 #
-# Nada aqui publica Release: o APK fica só na página da execução ("Artifacts").
+# O APK fica na página da execução ("Artifacts"). Só no modo OFICIAL, num push ao main ou ao
+# android-paridade-iphone, o job "Publicar" cria a Release vX.Y.Z como Latest (nunca Pre-release),
+# com as notas de docs/notas-android/vX.Y.Z.md. Se a Release já existe, não faz nada.
+# Publicar foi autorizado por Arthur em 24/11/2026 ("pode publicar" quando a chave estiver no GitHub).
 
 name: Android
 
@@ -64,6 +67,10 @@ jobs:
     name: APK
     needs: testes
     runs-on: ubuntu-latest
+    outputs:
+      modo: ${{ steps.modo.outputs.modo }}
+      versao: ${{ steps.modo.outputs.versao }}
+      nome: ${{ steps.apk.outputs.nome }}
     defaults:
       run:
         working-directory: android
@@ -200,3 +207,43 @@ jobs:
           path: android/saida/${{ steps.apk.outputs.nome }}
           retention-days: 14
           if-no-files-found: error
+
+  publicar:
+    name: Publicar Release
+    needs: apk
+    if: >-
+      github.event_name == 'push' && needs.apk.outputs.modo == 'oficial' &&
+      (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/android-paridade-iphone')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: ${{ needs.apk.outputs.nome }}
+          path: saida
+      - name: Criar a Release (só se ainda não existir)
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSAO: ${{ needs.apk.outputs.versao }}
+          NOME: ${{ needs.apk.outputs.nome }}
+        run: |
+          tag="v$VERSAO"
+          if gh release view "$tag" >/dev/null 2>&1; then
+            echo "A Release $tag já existe. Nada a fazer."
+            exit 0
+          fi
+          notas="docs/notas-android/$tag.md"
+          if [ ! -f "$notas" ]; then
+            echo "::error::Faltam as notas da versão em $notas."
+            exit 1
+          fi
+          cp "saida/$NOME" "ufac-mais-$tag.apk"
+          # O iPhone publica sempre com --latest=false; o Android é sempre a Latest.
+          gh release create "$tag" "ufac-mais-$tag.apk" \
+            --target "$GITHUB_SHA" \
+            --title "UFAC+ Android $VERSAO" \
+            --notes-file "$notas" \
+            --latest
+          echo "### Publicada: $tag" >> "$GITHUB_STEP_SUMMARY"

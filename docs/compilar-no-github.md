@@ -7,7 +7,7 @@ O robô `.github/workflows/android.yml` faz nos computadores do GitHub o que ant
 
 Ele roda sozinho a cada envio (push) que mexe em `android/` no `main` ou num branch `android-…`, e em pull requests. Também dá para rodar na mão: **Actions › Android › Run workflow**.
 
-**Nada é publicado.** O APK fica só na página da execução, em **Artifacts**, por 14 dias. Release continua sendo só com o "pode publicar" do Arthur (`docs/publicar.md`).
+O APK fica na página da execução, em **Artifacts**, por 14 dias. **No modo oficial**, num push ao `main` ou ao `android-paridade-iphone`, o robô também cria a Release `vX.Y.Z` como Latest (nunca Pre-release), com as notas de `docs/notas-android/vX.Y.Z.md`; se a Release já existe, não faz nada. Arthur autorizou isso em 24/11/2026. No modo teste nada é publicado.
 
 ## Os dois modos
 
