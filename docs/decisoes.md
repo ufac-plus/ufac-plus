@@ -194,3 +194,8 @@ Prints dos temas: `flutter test test/visual_test.dart --update-goldens --tags vi
 - Em feriado (não ponto facultativo) a Início pula a aula, o .ics do Calendário tira o dia (EXDATE) e o Worker não manda o aviso de aula: o iPhone manda as datas de feriado dos próximos 120 dias (dado público) como `pausas`.
 - Configurações › Créditos: quem faz o UFAC+ e o que cada um fez, com o mesmo texto do site.
 - Worker: limite de 30 pedidos/min por IP em `/google/*` (Rate Limiting do Workers, com contador em memória de reserva); `localhost` só com `DEV_LOCAL=1` (issue #12).
+
+## 2026-11-23: Android — gastos do RU por mês (issue #18)
+- A versão do iPhone ainda não tem essa tela (só as listas de Refeições e Recargas), então o Android é o primeiro. Nenhuma requisição nova: o Histórico de uso ganhou a aba **Gastos**, montada só com as duas páginas do histórico do eTICKET que o app já lê.
+- Um cartão por mês, do mais recente ao mais antigo: "Gasto em refeições" (soma dos valores, com a quantidade de refeições) e "Recarregado" (soma e quantidade de recargas). Rodapé: "Soma o que aparece no histórico do eTICKET."
+- Linha sem data legível (dd/mm/aaaa) fica de fora; linha sem valor conta na quantidade, mas não soma. O app não filtra por Status/Situação, porque as fixtures só têm "Exemplo" e não sei quais valores reais existem (ex.: recarga não paga). Se aparecer um status de cancelamento, filtrar em `gastosPorMes` (`lib/data/historico.dart`).
