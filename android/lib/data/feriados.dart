@@ -15,7 +15,9 @@ class AvisoFeriado {
 }
 
 // Feriados do Acre e de Rio Branco mudam de dia por decreto a cada ano, então só entram
-// depois de conferidos. 2026: Decreto estadual nº 11.809/2025 e calendário da Prefeitura.
+// depois de conferidos. A Lei estadual 2.126/2009 adia para a sexta os estaduais que caem em dia útil
+// (menos 15/06 e 06/08), e o decreto anual diz como: por isso a data é a comemorada, não a da lei.
+// 2026: Decreto estadual nº 11.809/2025 (conferido na Portaria TJAC 6569/2025) e calendário da Prefeitura.
 final _locaisPorAno = <int, List<Feriado>>{
   2026: [
     Feriado(DateTime(2026, 1, 22), 'Dia do Católico', TipoFeriado.feriado), // 20/1 adiado pela Lei 2.126/2009
@@ -23,7 +25,7 @@ final _locaisPorAno = <int, List<Feriado>>{
     Feriado(DateTime(2026, 3, 8), 'Dia Internacional da Mulher', TipoFeriado.feriado),
     Feriado(DateTime(2026, 6, 15), 'Aniversário do Acre', TipoFeriado.feriado),
     Feriado(DateTime(2026, 9, 5), 'Dia da Amazônia', TipoFeriado.feriado),
-    Feriado(DateTime(2026, 11, 17), 'Tratado de Petrópolis', TipoFeriado.feriado),
+    Feriado(DateTime(2026, 11, 19), 'Tratado de Petrópolis', TipoFeriado.feriado), // 17/11 adiado (Lei 2.126/2009)
     Feriado(DateTime(2026, 12, 28), 'Aniversário de Rio Branco', TipoFeriado.feriado),
   ],
 };
@@ -78,10 +80,7 @@ AvisoFeriado? avisoFeriado(DateTime agora) {
   if (feriado == null) return null;
   final quando = hoje != null ? 'Hoje' : 'Amanhã';
   if (feriado.tipo == TipoFeriado.pontoFacultativo) {
-    return AvisoFeriado(
-      '$quando é ponto facultativo · ${feriado.nome}',
-      'Confira se há aula e o funcionamento do RU.',
-    );
+    return AvisoFeriado('$quando é ponto facultativo · ${feriado.nome}', 'Confira se há aula e o funcionamento do RU.');
   }
   return AvisoFeriado('$quando é feriado · ${feriado.nome}', 'Sem aulas. Confira o funcionamento do RU.');
 }

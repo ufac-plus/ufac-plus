@@ -71,7 +71,7 @@ O histórico do RU é lido só ao abrir essa tela e fica salvo. Os atalhos do Me
 ## 2026-11-04: feriados
 Feriados nacionais fixos e datas móveis (calculadas pela Páscoa) valem para qualquer ano. Feriados do Acre e de Rio Branco ficam por ano, porque decretos podem mudar a data: só 2026 está na lista, conferido no Decreto estadual 11.809/2025, no calendário da Prefeitura (RBPREV) e no calendário federal (MGI). Em 2027, esses precisam ser conferidos e adicionados numa atualização do app.
 Carnaval e Corpus Christi são pontos facultativos: o aviso diz "Confira se há aula", sem afirmar que não há. Outros pontos facultativos (vésperas, Dia do Servidor, Revolução Acreana) ficaram de fora.
-**Dúvida a conferir:** 17/11/2026 (Tratado de Petrópolis) está no decreto sem adiamento, mas um trecho do calendário do TRE-AC indica comemoração em 19/11. O app usa 17/11.
+**Resolvido (issue #2):** 17/11/2026 (Tratado de Petrópolis) foi comemorado em 19/11, pela Lei estadual 2.126/2009 (Decreto 11.809/2025; Portaria TJAC 6569/2025). Desde 23/11/2026 o Android usa 19/11, como o iPhone.
 
 ## 2026-11-04: contato do relato
 Número e e-mail vêm de `.env.json` no build (`--dart-define-from-file`), fora do git. Eles vão dentro do APK, que é público nas Releases. Arthur decidiu não colocar o e-mail: sem contato, a tela avisa que ele não está configurado.
