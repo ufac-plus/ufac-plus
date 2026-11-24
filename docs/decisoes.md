@@ -199,3 +199,9 @@ Prints dos temas: `flutter test test/visual_test.dart --update-goldens --tags vi
 - O texto do saldo sempre foi "R$ 12,50", sem espaço. A causa é a Plus Jakarta Sans: a vírgula tem margens laterais largas, maiores à esquerda, e no tamanho do saldo (38 px, peso 800) sobravam de 10 a 16 px a mais que entre dois dígitos.
 - `spanMoeda` (lib/ui/componentes.dart) encurta o caractere antes da vírgula (−0,08 do tamanho da fonte) e a própria vírgula (−0,05); vale também para o ponto do milhar. O texto lido pelo leitor de tela não muda.
 - `test/moeda_test.dart` desenha o saldo com a fonte de verdade e mede os vãos em pixels, dígito a dígito. Só o saldo grande usa o ajuste; nos textos pequenos a diferença não aparece.
+
+## 2026-11-24: Android — eTICKET instável (issue #3)
+- O iPhone contorna no Worker (servidor), repetindo cada salto com conexão nova; isso não existe no Android, que fala direto com a Ufac pela WebView. O equivalente seguro aqui: cada leitura do eTICKET tem até 3 tentativas de 7 s, cada uma numa WebView nova (conexão nova), com 1 s de espera entre elas (no máximo 23 s, antes eram 20 s numa tentativa só). O Portal continua com uma tentativa de 20 s, como no iPhone.
+- Certificado errado (o IP `.8` entrega o do portal): a WebView recusa sempre (`ServerTrustAuthResponseAction.CANCEL`) e a tentativa conta como "sem resposta". Antes, o Android recusava em silêncio e a página de erro chegava como se o eTICKET estivesse logado. Nunca se aceita certificado inválido.
+- Uma tentativa que já enviou o login automático não se repete, para a senha não ir duas vezes. Sem resposta não marca a sessão como expirada: o app segue com os dados salvos.
+- `lib/pdf/baixar_pdf.dart` não muda: os PDFs vêm do Portal (portal.ufac.br), não do eTICKET. A correção definitiva continua sendo da Ufac (NTI).

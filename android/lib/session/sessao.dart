@@ -11,10 +11,43 @@ enum ResultadoVerificacao { ativa, expirada, semResposta }
 
 /// Página aberta em segundo plano. O HTML só existe com sessão ativa e nunca vai para log.
 class PaginaLida {
-  const PaginaLida(this.resultado, [this.html]);
+  const PaginaLida(this.resultado, [this.html]) : repetivel = false;
+
+  /// O site não respondeu a tempo ou mostrou o certificado errado, antes de qualquer login enviado:
+  /// pode ser repetida com uma conexão nova.
+  const PaginaLida.falhaDeRede() : resultado = ResultadoVerificacao.semResposta, html = null, repetivel = true;
+
   final ResultadoVerificacao resultado;
   final String? html;
+  final bool repetivel;
 }
+
+// Issue #3: o eTICKET tem dois IPs; um entrega o certificado do portal e, no outro, cerca de metade das
+// conexões novas nunca recebe resposta (as boas respondem em ~0,35 s). O iPhone repete cada salto no Worker;
+// aqui cada tentativa é uma WebView nova, com conexão nova, e prazo curto. O Portal não repete (como no iPhone).
+const esperaEntreTentativas = Duration(seconds: 1);
+
+List<Duration> prazosDasTentativas(Sistema sistema) => sistema == Sistema.eticket
+    ? const [Duration(seconds: 7), Duration(seconds: 7), Duration(seconds: 7)]
+    : const [Duration(seconds: 20)];
+
+/// Repete [tentar] enquanto a falha for de rede, até [vezes], com [espera] entre uma e outra.
+Future<PaginaLida> comNovasTentativas(
+  Future<PaginaLida> Function() tentar, {
+  required int vezes,
+  Duration espera = esperaEntreTentativas,
+}) async {
+  var pagina = await tentar();
+  for (var i = 1; i < vezes && pagina.repetivel; i++) {
+    await Future<void>.delayed(espera);
+    pagina = await tentar();
+  }
+  return pagina;
+}
+
+/// O certificado recusado é o do próprio site pedido (e não de um recurso de outro endereço)?
+/// Em qualquer caso a resposta ao Android é sempre recusar: nunca se aceita certificado inválido.
+bool certificadoDaPagina(Uri pagina, String? host) => host == null || host == pagina.host;
 
 typedef Leitor = Future<PaginaLida> Function(Sistema sistema, String url);
 
@@ -100,14 +133,28 @@ class Sessao extends ChangeNotifier {
 }
 
 Future<PaginaLida> _lerComWebView(Sistema sistema, String endereco) async {
+  // Login automático: no máximo uma tentativa por leitura, só com senha guardada pela pessoa. Uma tentativa
+  // que enviou o login nunca é repetida, então a senha não vai duas vezes.
+  final login = await Credenciais.instancia.paraLoginAutomatico();
+  final prazos = prazosDasTentativas(sistema);
+  var vez = 0;
+  return comNovasTentativas(() => _umaLeitura(sistema, endereco, login, prazos[vez++]), vezes: prazos.length);
+}
+
+/// Prazo extra depois de enviar o login automático (envio, redirecionamento e volta à página pedida).
+const _prazoDoLogin = Duration(seconds: 20);
+
+Future<PaginaLida> _umaLeitura(Sistema sistema, String endereco, (String, String)? login, Duration prazo) async {
   final fim = Completer<PaginaLida>();
   void concluir(PaginaLida p) {
     if (!fim.isCompleted) fim.complete(p);
   }
 
-  // Login automático: no máximo uma tentativa por leitura, só com senha guardada pela pessoa.
-  final login = await Credenciais.instancia.paraLoginAutomatico();
   var tentouLogin = false, recarregou = false;
+  // Sem resposta: repetível só se o login ainda não foi enviado.
+  PaginaLida semResposta() =>
+      tentouLogin ? const PaginaLida(ResultadoVerificacao.semResposta) : const PaginaLida.falhaDeRede();
+  var relogio = Timer(prazo, () => concluir(semResposta()));
   final webview = HeadlessInAppWebView(
     initialUrlRequest: URLRequest(url: WebUri(endereco)),
     initialSettings: InAppWebViewSettings(useShouldOverrideUrlLoading: true),
@@ -118,8 +165,14 @@ Future<PaginaLida> _lerComWebView(Sistema sistema, String endereco) async {
       await controle.loadUrl(urlRequest: URLRequest(url: WebUri.uri(https)));
       return NavigationActionPolicy.CANCEL;
     },
+    // Certificado errado (um dos IPs do eTICKET entrega o do portal): recusa sempre. Sem isto, o Android recusa
+    // em silêncio e a página de erro chegava ao onLoadStop com o endereço do eTICKET, como se estivesse logado.
+    onReceivedServerTrustAuthRequest: (_, desafio) async {
+      if (certificadoDaPagina(Uri.parse(endereco), desafio.protectionSpace.host)) concluir(semResposta());
+      return ServerTrustAuthResponse(action: ServerTrustAuthResponseAction.CANCEL);
+    },
     onLoadStop: (controle, url) async {
-      if (url == null || url.scheme != 'https') return;
+      if (fim.isCompleted || url == null || url.scheme != 'https') return;
       switch (classificar(sistema, url)) {
         case EstadoPagina.logado:
           // Depois do login automático, o site pode cair na página inicial: volta para a pedida.
@@ -132,6 +185,8 @@ Future<PaginaLida> _lerComWebView(Sistema sistema, String endereco) async {
         case EstadoPagina.naLogin:
           if (login != null && !tentouLogin) {
             tentouLogin = true;
+            relogio.cancel();
+            relogio = Timer(_prazoDoLogin, () => concluir(semResposta()));
             final r = await controle.evaluateJavascript(
               source: scriptLoginAutomatico(eticket: sistema == Sistema.eticket, cpf: login.$1, senha: login.$2),
             );
@@ -147,18 +202,14 @@ Future<PaginaLida> _lerComWebView(Sistema sistema, String endereco) async {
       }
     },
     onReceivedError: (_, pedido, erro) {
-      if (pedido.isForMainFrame == true && erro.type != WebResourceErrorType.CANCELLED) {
-        concluir(const PaginaLida(ResultadoVerificacao.semResposta));
-      }
+      if (pedido.isForMainFrame == true && erro.type != WebResourceErrorType.CANCELLED) concluir(semResposta());
     },
   );
   try {
     await webview.run();
-    return await fim.future.timeout(
-      Duration(seconds: login == null ? 20 : 40),
-      onTimeout: () => const PaginaLida(ResultadoVerificacao.semResposta),
-    );
+    return await fim.future;
   } finally {
+    relogio.cancel();
     await webview.dispose();
   }
 }
