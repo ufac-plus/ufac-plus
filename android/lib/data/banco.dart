@@ -6,21 +6,21 @@ class Banco {
   static Database? _db;
 
   static Future<Database> _abrir() async => _db ??= await openDatabase(
-        join(await getDatabasesPath(), 'ufac_no_bolso.db'),
-        version: 1,
-        onCreate: (db, _) => db.execute('CREATE TABLE cache (chave TEXT PRIMARY KEY, valor TEXT NOT NULL)'),
-      );
+    join(await getDatabasesPath(), 'ufac_no_bolso.db'),
+    version: 1,
+    onCreate: (db, _) => db.execute('CREATE TABLE cache (chave TEXT PRIMARY KEY, valor TEXT NOT NULL)'),
+  );
 
   static Future<String?> ler(String chave) async {
     final linhas = await (await _abrir()).query('cache', where: 'chave = ?', whereArgs: [chave]);
     return linhas.isEmpty ? null : linhas.first['valor'] as String;
   }
 
-  static Future<void> gravar(String chave, String valor) async => (await _abrir()).insert(
-        'cache',
-        {'chave': chave, 'valor': valor},
-        conflictAlgorithm: ConflictAlgorithm.replace,
-      );
+  static Future<void> gravar(String chave, String valor) async =>
+      (await _abrir()).insert('cache', {'chave': chave, 'valor': valor}, conflictAlgorithm: ConflictAlgorithm.replace);
+
+  static Future<void> apagar(String chave) async =>
+      (await _abrir()).delete('cache', where: 'chave = ?', whereArgs: [chave]);
 
   static Future<void> apagarTudo() async => (await _abrir()).delete('cache');
 }

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../theme/app_cores.dart';
 import '../theme/app_medidas.dart';
@@ -27,10 +28,7 @@ class Cartao extends StatelessWidget {
       clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: aoTocar,
-        child: Padding(
-          padding: preenchimento ?? const EdgeInsets.all(AppMedidas.interno),
-          child: child,
-        ),
+        child: Padding(padding: preenchimento ?? const EdgeInsets.all(AppMedidas.interno), child: child),
       ),
     );
   }
@@ -121,11 +119,11 @@ class IconeQuadrado extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-        width: lado,
-        height: lado,
-        decoration: BoxDecoration(color: fundo, borderRadius: BorderRadius.circular(AppMedidas.raioIcone)),
-        child: Icon(icone, color: cor, size: lado * 0.55),
-      );
+    width: lado,
+    height: lado,
+    decoration: BoxDecoration(color: fundo, borderRadius: BorderRadius.circular(AppMedidas.raioIcone)),
+    child: Icon(icone, color: cor, size: lado * 0.55),
+  );
 }
 
 /// Etiqueta em pílula ("começa em 20 min").
@@ -137,10 +135,10 @@ class Selo extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-        decoration: BoxDecoration(color: fundo, borderRadius: BorderRadius.circular(99)),
-        child: Text(texto, style: AppTexto.rotulo.copyWith(color: cor)),
-      );
+    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+    decoration: BoxDecoration(color: fundo, borderRadius: BorderRadius.circular(99)),
+    child: Text(texto, style: AppTexto.rotulo.copyWith(color: cor)),
+  );
 }
 
 /// Seletor de abas em pílula (Café · Almoço · Jantar).
@@ -205,7 +203,9 @@ class FaixaAviso extends StatelessWidget {
         children: [
           Icon(icone, color: c.chipTexto, size: 22),
           const SizedBox(width: 10),
-          Expanded(child: Text(texto, style: AppTexto.apoio.copyWith(color: c.chipTexto))),
+          Expanded(
+            child: Text(texto, style: AppTexto.apoio.copyWith(color: c.chipTexto)),
+          ),
           if (acao != null) ...[
             const SizedBox(width: 10),
             Text(acao!, style: AppTexto.corpoForte.copyWith(color: c.chipTexto)),
@@ -226,6 +226,7 @@ class ItemLista extends StatelessWidget {
     required this.titulo,
     this.subtitulo,
     required this.aoTocar,
+    this.iconeFim = Icons.chevron_right_rounded,
   });
 
   final IconData icone;
@@ -233,6 +234,9 @@ class ItemLista extends StatelessWidget {
   final String titulo;
   final String? subtitulo;
   final VoidCallback aoTocar;
+
+  /// Seta no fim; [Icons.open_in_new_rounded] quando abre fora do app.
+  final IconData iconeFim;
 
   @override
   Widget build(BuildContext context) {
@@ -252,7 +256,7 @@ class ItemLista extends StatelessWidget {
               ],
             ),
           ),
-          Icon(Icons.chevron_right_rounded, color: c.secundario),
+          Icon(iconeFim, color: c.secundario),
         ],
       ),
     );
@@ -313,7 +317,11 @@ class EstadoVazio extends StatelessWidget {
           Text(titulo, style: AppTexto.corpoForte, textAlign: TextAlign.center),
           if (texto != null) ...[
             const SizedBox(height: 4),
-            Text(texto!, style: AppTexto.apoio.copyWith(color: c.secundario), textAlign: TextAlign.center),
+            Text(
+              texto!,
+              style: AppTexto.apoio.copyWith(color: c.secundario),
+              textAlign: TextAlign.center,
+            ),
           ],
           if (acao != null) ...[const SizedBox(height: 14), acao!],
         ],
@@ -399,4 +407,23 @@ void avisarEmBreve(BuildContext context) {
   ScaffoldMessenger.of(context)
     ..hideCurrentSnackBar()
     ..showSnackBar(const SnackBar(content: Text('Isso chega numa próxima etapa.')));
+}
+
+/// Quem abre o navegador; os testes trocam por um falso.
+Future<bool> Function(Uri, LaunchMode) abridorExterno = (u, modo) => launchUrl(u, mode: modo);
+
+/// Abre o endereço no navegador do celular (Chrome), fora do app. Se não der, avisa com [falha].
+Future<void> abrirForaDoApp(BuildContext context, Uri endereco, {required String falha}) async {
+  final mensageiro = ScaffoldMessenger.of(context);
+  bool abriu;
+  try {
+    abriu = await abridorExterno(endereco, LaunchMode.externalApplication);
+  } catch (_) {
+    abriu = false;
+  }
+  if (!abriu) {
+    mensageiro
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(content: Text(falha)));
+  }
 }

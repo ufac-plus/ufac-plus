@@ -5,6 +5,7 @@ import '../config.dart';
 import '../data/atualizacoes.dart';
 import '../data/avisos_classroom.dart';
 import '../data/classroom.dart';
+import '../data/editais.dart';
 import '../data/foto_perfil.dart';
 import '../data/perfil.dart';
 import '../data/preferencias.dart';
@@ -93,8 +94,10 @@ class TelaConfiguracoes extends StatelessWidget {
     final resultado = await Atualizacoes.instancia.verificar();
     final texto = switch (resultado) {
       ResultadoAtualizacao.atualizado => 'Você está na versão mais recente (${pacote.version}).',
-      ResultadoAtualizacao.haNova => 'Nova versão disponível: ${Atualizacoes.instancia.nova!.versao}. Veja a tela Início.',
-      ResultadoAtualizacao.semConfiguracao => 'Versão instalada: ${pacote.version}. A busca por versões ainda não foi configurada.',
+      ResultadoAtualizacao.haNova =>
+        'Nova versão disponível: ${Atualizacoes.instancia.nova!.versao}. Veja a tela Início.',
+      ResultadoAtualizacao.semConfiguracao =>
+        'Versão instalada: ${pacote.version}. A busca por versões ainda não foi configurada.',
       ResultadoAtualizacao.semResposta => 'Versão instalada: ${pacote.version}. Não consegui verificar agora.',
     };
     mensageiro
@@ -115,7 +118,7 @@ class TelaConfiguracoes extends StatelessWidget {
       builder: (dialogo) => AlertDialog(
         title: const Text('Limpar dados salvos?'),
         content: const Text(
-          'Apaga horários, notas, cardápio e histórico guardados. Você continua logado e o QR continua funcionando. '
+          'Apaga horários, notas, cardápio, histórico e editais guardados. Você continua logado e o QR continua funcionando. '
           'Os dados do Portal voltam depois de entrar nele de novo.',
         ),
         actions: [
@@ -129,6 +132,7 @@ class TelaConfiguracoes extends StatelessWidget {
     RepositorioPortal.instancia.limparCache();
     RepositorioProfessor.instancia.limparCache();
     RepositorioBiblioteca.instancia.limparCache();
+    await RepositorioEditais.instancia.limparCache();
     await RepositorioRu.instancia.aoAbrirApp();
     if (Perfil.instancia.ehProfessor) {
       await RepositorioProfessor.instancia.aoAbrirApp();
@@ -186,7 +190,12 @@ class TelaConfiguracoes extends StatelessWidget {
                     ClipRRect(
                       borderRadius: BorderRadius.circular(AppMedidas.raioIcone),
                       child: foto.bytes == null
-                          ? IconeQuadrado(icone: Icons.person_rounded, cor: c.navAtivo, fundo: c.navAtivoFundo, lado: 56)
+                          ? IconeQuadrado(
+                              icone: Icons.person_rounded,
+                              cor: c.navAtivo,
+                              fundo: c.navAtivoFundo,
+                              lado: 56,
+                            )
                           : Image.memory(foto.bytes!, width: 56, height: 56, fit: BoxFit.cover),
                     ),
                     const SizedBox(width: 12),
@@ -366,8 +375,8 @@ class _CartaoLoginAutomaticoState extends State<_CartaoLoginAutomatico> {
                       !_ligado
                           ? 'Desligado: o app pede login quando a sessão da Ufac cai'
                           : _temSalvas
-                              ? 'CPF e senha guardados cifrados neste celular'
-                              : 'Ligado, mas ainda sem senha: entre uma vez com a chave ligada',
+                          ? 'CPF e senha guardados cifrados neste celular'
+                          : 'Ligado, mas ainda sem senha: entre uma vez com a chave ligada',
                       style: AppTexto.apoio.copyWith(color: c.secundario),
                     ),
                   ],

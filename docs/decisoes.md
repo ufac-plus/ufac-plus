@@ -194,3 +194,7 @@ Prints dos temas: `flutter test test/visual_test.dart --update-goldens --tags vi
 - Em feriado (não ponto facultativo) a Início pula a aula, o .ics do Calendário tira o dia (EXDATE) e o Worker não manda o aviso de aula: o iPhone manda as datas de feriado dos próximos 120 dias (dado público) como `pausas`.
 - Configurações › Créditos: quem faz o UFAC+ e o que cada um fez, com o mesmo texto do site.
 - Worker: limite de 30 pedidos/min por IP em `/google/*` (Rate Limiting do Workers, com contador em memória de reserva); `localhost` só com `DEV_LOCAL=1` (issue #12).
+
+## 2026-11-24: Android — Editais e Mapa do campus (issue #23, seções 3 e 4)
+- Menu › **Editais**, com três abas: **Proaes** (bolsas e auxílios), **Prograd** e **Proex** (extensão, cultura e esporte; a Proex responde na mesma API pública do Plone em `www3.ufac.br/proex/@search`). Sem login e sem cookies (HttpClient do Dart), só links `https://www3.ufac.br/`, cada edital abre no navegador. Cache de 6 h no SQLite por pró-reitoria; pasta do ano vazia → ano anterior (virada do ano no fuso de Rio Branco). "Limpar dados salvos" e "Sair" apagam esse cache.
+- Menu › **Mapa do campus** abre `sistemas.ufac.br/mapa/` no Chrome (`LaunchMode.externalApplication`), nunca numa WebView do app: o site é pesado e, dentro do app, disputava memória e processamento com a WebView escondida da Ufac, o que deixava o mapa travado. O Chrome tem motor próprio, aceleração gráfica e cache do site.
