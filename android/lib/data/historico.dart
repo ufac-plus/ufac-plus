@@ -67,3 +67,51 @@ class HistoricoRu {
         recargas: [for (final r in m['recargas'] as List) RegistroRecarga.deMapa(r as Map<String, dynamic>)],
       );
 }
+
+/// "01/10/2026" (como o eTICKET escreve) vira data; o que não for data vira null.
+DateTime? lerDataEticket(String texto) {
+  final m = RegExp(r'^(\d{2})/(\d{2})/(\d{4})$').firstMatch(texto.trim());
+  if (m == null) return null;
+  final dia = int.parse(m[1]!), mes = int.parse(m[2]!), ano = int.parse(m[3]!);
+  final data = DateTime(ano, mes, dia);
+  return data.day == dia && data.month == mes ? data : null;
+}
+
+/// Quanto saiu e quanto entrou no RU num mês, só pelo que o histórico do eTICKET mostra.
+class GastoMes {
+  GastoMes(this.inicio);
+
+  /// Primeiro dia do mês.
+  final DateTime inicio;
+  int refeicoes = 0, recargas = 0;
+  double gastoRefeicoes = 0, recarregado = 0;
+
+  int get mes => inicio.month;
+  int get ano => inicio.year;
+}
+
+/// Um item por mês com refeição ou recarga, do mais recente ao mais antigo.
+/// Linha sem data legível fica de fora; sem valor, conta na quantidade mas não soma.
+List<GastoMes> gastosPorMes(HistoricoRu historico) {
+  final meses = <DateTime, GastoMes>{};
+  GastoMes? doMes(String data) {
+    final d = lerDataEticket(data);
+    if (d == null) return null;
+    final chave = DateTime(d.year, d.month);
+    return meses.putIfAbsent(chave, () => GastoMes(chave));
+  }
+
+  for (final r in historico.refeicoes) {
+    final m = doMes(r.data);
+    if (m == null) continue;
+    m.refeicoes++;
+    m.gastoRefeicoes += r.valor ?? 0;
+  }
+  for (final r in historico.recargas) {
+    final m = doMes(r.data);
+    if (m == null) continue;
+    m.recargas++;
+    m.recarregado += r.valor ?? 0;
+  }
+  return meses.values.toList()..sort((a, b) => b.inicio.compareTo(a.inicio));
+}

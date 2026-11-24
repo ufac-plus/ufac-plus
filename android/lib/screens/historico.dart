@@ -10,7 +10,7 @@ import '../ui/componentes.dart';
 import '../ui/formatos.dart';
 import 'login.dart';
 
-/// Refeições e recargas do eTICKET. Abre com o que está salvo e lê de novo em seguida.
+/// Refeições, recargas e gastos por mês do eTICKET. Abre com o que está salvo e lê de novo em seguida.
 class TelaHistorico extends StatefulWidget {
   const TelaHistorico({super.key});
 
@@ -95,7 +95,7 @@ class _TelaHistoricoState extends State<TelaHistorico> {
               ),
               ?aviso,
               SeletorAbas(
-                rotulos: const ['Refeições', 'Recargas'],
+                rotulos: const ['Refeições', 'Recargas', 'Gastos'],
                 atual: _aba,
                 aoEscolher: (i) => setState(() => _aba = i),
               ),
@@ -109,14 +109,93 @@ class _TelaHistoricoState extends State<TelaHistorico> {
                 if (historico.refeicoes.isEmpty)
                   const Cartao(child: EstadoVazio(icone: Icons.restaurant_rounded, titulo: 'Nenhuma refeição ainda')),
                 for (final r in historico.refeicoes) _LinhaRefeicao(registro: r),
-              ] else ...[
+              ] else if (_aba == 1) ...[
                 if (historico.recargas.isEmpty)
                   const Cartao(child: EstadoVazio(icone: Icons.payments_rounded, titulo: 'Nenhuma recarga ainda')),
                 for (final r in historico.recargas) _LinhaRecarga(registro: r),
-              ],
+              ] else
+                ..._gastos(context, historico),
             ],
           );
         },
+      ),
+    );
+  }
+}
+
+/// Um cartão por mês. Só soma o que o histórico do eTICKET mostra, sem estimar nada.
+List<Widget> _gastos(BuildContext context, HistoricoRu historico) {
+  final meses = gastosPorMes(historico);
+  if (meses.isEmpty) {
+    return const [
+      Cartao(
+        child: EstadoVazio(icone: Icons.savings_rounded, titulo: 'Nenhum gasto ainda'),
+      ),
+    ];
+  }
+  return [
+    for (final m in meses) _CartaoGastoMes(gasto: m),
+    Text(
+      'Soma o que aparece no histórico do eTICKET.',
+      style: AppTexto.rotulo.copyWith(color: context.cores.secundario),
+      textAlign: TextAlign.center,
+    ),
+  ];
+}
+
+String _quantos(int n, String um, String varios) => n == 1 ? '1 $um' : '$n $varios';
+
+class _CartaoGastoMes extends StatelessWidget {
+  const _CartaoGastoMes({required this.gasto});
+
+  final GastoMes gasto;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.cores;
+    final recargas = gasto.recargas == 0
+        ? 'Nenhuma recarga'
+        : '${formatarMoeda(gasto.recarregado)} em ${_quantos(gasto.recargas, 'recarga', 'recargas')}';
+    return Cartao(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(formatarMesAno(gasto.inicio), style: AppTexto.tituloCartao),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              IconeQuadrado(icone: Icons.restaurant_rounded, cor: c.verde, fundo: c.verdeFundo),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Gasto em refeições', style: AppTexto.rotulo.copyWith(color: c.secundario)),
+                    Text(_quantos(gasto.refeicoes, 'refeição', 'refeições'), style: AppTexto.apoio),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              Text(formatarMoeda(gasto.gastoRefeicoes), style: AppTexto.tituloCartao),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              IconeQuadrado(icone: Icons.payments_rounded, cor: c.navAtivo, fundo: c.navAtivoFundo),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Recarregado', style: AppTexto.rotulo.copyWith(color: c.secundario)),
+                    Text(recargas, style: AppTexto.apoio),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }

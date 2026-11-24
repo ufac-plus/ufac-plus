@@ -37,3 +37,9 @@ String formatarPrazoCurto(DateTime prazo, DateTime agora) {
   if (diferenca == 1) return 'amanhã $hora';
   return '${_dias[prazo.weekday - 1].substring(0, 3).toLowerCase()} $hora';
 }
+
+/// "Novembro de 2026"
+String formatarMesAno(DateTime d) {
+  final nome = _meses[d.month - 1];
+  return '${nome[0].toUpperCase()}${nome.substring(1)} de ${d.year}';
+}
