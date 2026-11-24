@@ -5,7 +5,7 @@
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
     <!-- Sem backup: sessão, cache e matrícula não podem sair do celular (regras 3 e 6). -->
     <application
-        android:label="UFAC+"
+        android:label="${rotuloApp}"
         android:name="${applicationName}"
         android:allowBackup="false"
         android:usesCleartextTraffic="false"
