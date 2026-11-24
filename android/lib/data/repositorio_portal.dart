@@ -106,7 +106,15 @@ class RepositorioPortal extends ChangeNotifier {
       final url = d.urlNotas;
       final quadro = url == null ? null : await sessao.lerEMarcar(Sistema.portal, url: url);
       if (url != null && quadro?.resultado != ResultadoVerificacao.ativa) return ResultadoPortal.falhou;
-      lidas.add(lerNotasDaDisciplina(quadro?.html ?? '', d));
+      final lida = lerNotasDaDisciplina(quadro?.html ?? '', d);
+      // A carga horária muda pouco: vem do cache e só é lida da página da turma uma vez (issue #22).
+      var carga = notasDaDisciplina(notas, d.disciplina)?.cargaHoraria;
+      final urlTurma = d.urlTurma;
+      if (carga == null && urlTurma != null) {
+        final turma = await sessao.lerEMarcar(Sistema.portal, url: urlTurma);
+        if (turma.html != null) carga = lerCargaHoraria(turma.html!);
+      }
+      lidas.add(lida.comCargaHoraria(carga));
     }
     notas = lidas;
     semestreDasNotas = lista.semestre;

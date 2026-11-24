@@ -1,3 +1,5 @@
+import '../config.dart';
+
 /// Dados do Portal. A matrícula não entra aqui: ela é igual ao número do QR e fica no cofre.
 class Identificacao {
   const Identificacao({required this.nome, required this.curso, required this.periodo, required this.semestre});
@@ -14,11 +16,11 @@ class Identificacao {
   Map<String, String> paraMapa() => {'nome': nome, 'curso': curso, 'periodo': periodo, 'semestre': semestre};
 
   static Identificacao deMapa(Map<String, dynamic> m) => Identificacao(
-        nome: m['nome'] as String,
-        curso: m['curso'] as String,
-        periodo: m['periodo'] as String,
-        semestre: m['semestre'] as String,
-      );
+    nome: m['nome'] as String,
+    curso: m['curso'] as String,
+    periodo: m['periodo'] as String,
+    semestre: m['semestre'] as String,
+  );
 }
 
 class Aula {
@@ -44,22 +46,22 @@ class Aula {
   }
 
   Map<String, Object?> paraMapa() => {
-        'disciplina': disciplina,
-        'dia': diaSemana,
-        'ini': inicioMin,
-        'fim': fimMin,
-        'de': valeDe?.toIso8601String(),
-        'ate': valeAte?.toIso8601String(),
-      };
+    'disciplina': disciplina,
+    'dia': diaSemana,
+    'ini': inicioMin,
+    'fim': fimMin,
+    'de': valeDe?.toIso8601String(),
+    'ate': valeAte?.toIso8601String(),
+  };
 
   static Aula deMapa(Map<String, dynamic> m) => Aula(
-        disciplina: m['disciplina'] as String,
-        diaSemana: m['dia'] as int,
-        inicioMin: m['ini'] as int,
-        fimMin: m['fim'] as int,
-        valeDe: DateTime.tryParse(m['de'] as String? ?? ''),
-        valeAte: DateTime.tryParse(m['ate'] as String? ?? ''),
-      );
+    disciplina: m['disciplina'] as String,
+    diaSemana: m['dia'] as int,
+    inicioMin: m['ini'] as int,
+    fimMin: m['fim'] as int,
+    valeDe: DateTime.tryParse(m['de'] as String? ?? ''),
+    valeAte: DateTime.tryParse(m['ate'] as String? ?? ''),
+  );
 }
 
 /// Uma célula do quadro: "Aval. 1" com peso "100.00%" e valor "10,00".
@@ -81,13 +83,15 @@ class NotaAvaliacao {
 
   String get total => itens.isEmpty ? '' : itens.last.valor;
 
-  Map<String, Object> paraMapa() => {'rotulo': rotulo, 'peso': peso, 'itens': [for (final i in itens) i.paraMapa()]};
+  Map<String, Object> paraMapa() => {
+    'rotulo': rotulo,
+    'peso': peso,
+    'itens': [for (final i in itens) i.paraMapa()],
+  };
 
-  static NotaAvaliacao deMapa(Map<String, dynamic> m) => NotaAvaliacao(
-        m['rotulo'] as String,
-        m['peso'] as String,
-        [for (final i in m['itens'] as List) ItemNota.deMapa(i as Map<String, dynamic>)],
-      );
+  static NotaAvaliacao deMapa(Map<String, dynamic> m) => NotaAvaliacao(m['rotulo'] as String, m['peso'] as String, [
+    for (final i in m['itens'] as List) ItemNota.deMapa(i as Map<String, dynamic>),
+  ]);
 }
 
 class NotasDisciplina {
@@ -107,14 +111,14 @@ class NotasDisciplina {
   final int? cargaHoraria;
 
   NotasDisciplina comCargaHoraria(int? carga) => NotasDisciplina(
-        disciplina: disciplina,
-        situacao: situacao,
-        notas: notas,
-        resumo: resumo,
-        media: media,
-        faltas: faltas,
-        cargaHoraria: carga,
-      );
+    disciplina: disciplina,
+    situacao: situacao,
+    notas: notas,
+    resumo: resumo,
+    media: media,
+    faltas: faltas,
+    cargaHoraria: carga,
+  );
   final List<NotaAvaliacao> notas;
 
   /// A última coluna do quadro: Média, Exame, Média Final.
@@ -124,24 +128,24 @@ class NotasDisciplina {
   String get situacaoApresentavel => situacao == 'Matrícula' ? 'Cursando' : situacao;
 
   Map<String, Object> paraMapa() => {
-        'disciplina': disciplina,
-        'situacao': situacao,
-        'media': media,
-        'faltas': faltas,
-        'carga': ?cargaHoraria,
-        'notas': [for (final n in notas) n.paraMapa()],
-        'resumo': [for (final r in resumo) r.paraMapa()],
-      };
+    'disciplina': disciplina,
+    'situacao': situacao,
+    'media': media,
+    'faltas': faltas,
+    'carga': ?cargaHoraria,
+    'notas': [for (final n in notas) n.paraMapa()],
+    'resumo': [for (final r in resumo) r.paraMapa()],
+  };
 
   static NotasDisciplina deMapa(Map<String, dynamic> m) => NotasDisciplina(
-        disciplina: m['disciplina'] as String,
-        situacao: m['situacao'] as String,
-        media: m['media'] as String,
-        faltas: m['faltas'] as String,
-        cargaHoraria: m['carga'] as int?,
-        notas: [for (final n in m['notas'] as List) NotaAvaliacao.deMapa(n as Map<String, dynamic>)],
-        resumo: [for (final r in m['resumo'] as List) ItemNota.deMapa(r as Map<String, dynamic>)],
-      );
+    disciplina: m['disciplina'] as String,
+    situacao: m['situacao'] as String,
+    media: m['media'] as String,
+    faltas: m['faltas'] as String,
+    cargaHoraria: m['carga'] as int?,
+    notas: [for (final n in m['notas'] as List) NotaAvaliacao.deMapa(n as Map<String, dynamic>)],
+    resumo: [for (final r in m['resumo'] as List) ItemNota.deMapa(r as Map<String, dynamic>)],
+  );
 }
 
 class ProximaAula {
@@ -197,30 +201,39 @@ class SituacaoFaltas {
 
 /// Reprova quem passa de [percentual] da carga horária. Sem a carga, usa [permitidasSemCarga].
 /// O aviso começa em 75% das faltas permitidas. Null quando o portal ainda não informa faltas.
+/// Regimento Geral da Ufac, arts. 314, I, e 320, II: reprova quem não tem 75% de frequência. As 16 faltas de uma
+/// disciplina de 60 h escalam com a carga: 30 h → 8, 45 h → 12, 60 h → 16, 90 h → 24 (igual ao iPhone, issue #22).
+/// Para baixo: numa carga que não é múltipla de 15 h, arredondar para cima passaria dos 75%.
+int faltasPermitidas(int cargaHoraria) => (cargaHoraria * limiteFaltas / 60 + 1e-9).floor();
+
+/// Sem a carga horária, usa `permitidasSemCarga` e marca `estimado`. `percentual` troca a regra por
+/// floor(carga × percentual).
 SituacaoFaltas? situacaoFaltas(
   String faltas, {
   required int? cargaHoraria,
-  required double percentual,
+  double? percentual,
   required int permitidasSemCarga,
 }) {
   final n = int.tryParse(faltas.trim());
   if (n == null) return null;
-  final permitidas = cargaHoraria == null ? permitidasSemCarga : (cargaHoraria * percentual).floor();
+  final carga = cargaHoraria != null && cargaHoraria > 0 ? cargaHoraria : null;
+  final permitidas = carga == null
+      ? permitidasSemCarga
+      : percentual != null
+      ? (carga * percentual).floor()
+      : faltasPermitidas(carga);
   final aviso = (permitidas * 0.75).ceil();
   final nivel = n > permitidas
       ? NivelFaltas.limite
       : n >= aviso
-          ? NivelFaltas.atencao
-          : NivelFaltas.tranquilo;
-  return SituacaoFaltas(n, permitidas, nivel, estimado: cargaHoraria == null);
+      ? NivelFaltas.atencao
+      : NivelFaltas.tranquilo;
+  return SituacaoFaltas(n, permitidas, nivel, estimado: carga == null);
 }
 
 /// O quadro de horários e a lista de notas escrevem o nome com detalhes diferentes.
-String nomeDeDisciplinaComparavel(String nome) => nome
-    .replaceFirst(RegExp(r'\s*\([^()]*\)\s*$'), '')
-    .replaceAll(RegExp(r'\s+'), ' ')
-    .trim()
-    .toLowerCase();
+String nomeDeDisciplinaComparavel(String nome) =>
+    nome.replaceFirst(RegExp(r'\s*\([^()]*\)\s*$'), '').replaceAll(RegExp(r'\s+'), ' ').trim().toLowerCase();
 
 NotasDisciplina? notasDaDisciplina(List<NotasDisciplina>? notas, String disciplina) {
   final alvo = nomeDeDisciplinaComparavel(disciplina);

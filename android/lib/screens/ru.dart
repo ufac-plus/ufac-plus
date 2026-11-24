@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../config.dart';
+import '../data/cardapio.dart';
 import '../data/refeicoes.dart';
 import '../data/repositorio_ru.dart';
 import '../session/regras_sessao.dart';
@@ -25,7 +26,8 @@ class TelaRu extends StatefulWidget {
 }
 
 class _TelaRuState extends State<TelaRu> {
-  late Refeicao _refeicao = proximaRefeicao(DateTime.now());
+  // Depois do jantar, abre no jantar (o último de hoje): abrir no café de hoje pareceria o de amanhã (issue #21).
+  late Refeicao _refeicao = refeicaoDeAmanha(DateTime.now()) ? Refeicao.jantar : proximaRefeicao(DateTime.now());
 
   Future<void> _abrirInstagram() async {
     final abriu = await launchUrl(Uri.parse(instagramRu), mode: LaunchMode.externalApplication);
@@ -105,6 +107,11 @@ class _TelaRuState extends State<TelaRu> {
             children: [
               Text('Cardápio de hoje', style: AppTexto.tituloCartao),
               Text(formatarData(DateTime.now()), style: AppTexto.apoio.copyWith(color: c.secundario)),
+              if (refeicaoDeAmanha(DateTime.now()))
+                Text(
+                  'As refeições de hoje já foram servidas. O cardápio de amanhã costuma sair perto de cada horário.',
+                  style: AppTexto.apoio.copyWith(color: c.secundario),
+                ),
               const SizedBox(height: 12),
               SeletorAbas(
                 rotulos: [for (final r in Refeicao.values) r.nome],
@@ -119,7 +126,12 @@ class _TelaRuState extends State<TelaRu> {
               const SizedBox(height: 8),
               if (itens.isEmpty)
                 _semCardapio(context, ru)
-              else
+              else ...[
+                if (ru.cardapioDeHoje!.repetida(_refeicao))
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 6),
+                    child: Text(avisoCardapioRepetido, style: AppTexto.apoio.copyWith(color: c.secundario)),
+                  ),
                 for (final item in itens)
                   Padding(
                     padding: const EdgeInsets.symmetric(vertical: 5),
@@ -136,6 +148,7 @@ class _TelaRuState extends State<TelaRu> {
                       ],
                     ),
                   ),
+              ],
             ],
           ),
         ),

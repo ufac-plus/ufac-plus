@@ -4,7 +4,6 @@ import '../config.dart';
 import '../data/academico.dart';
 import '../data/foto_perfil.dart';
 import '../data/professor.dart';
-import '../data/refeicoes.dart';
 import '../data/repositorio_professor.dart';
 import '../data/repositorio_ru.dart';
 import '../theme/app_cores.dart';
@@ -218,7 +217,7 @@ class TelaInicioProfessor extends StatelessWidget {
             if (turmas != null) _CartaoProximaAula(aula: aula),
             if (turmas != null) _CartaoParaFazer(turmas: turmas, agora: agora),
             const CartaoSaldo(tituloSaldo: 'Saldo no RU', compacto: true),
-            linhaProximaRefeicao(proximaRefeicao(agora), abrirRu),
+            linhaProximaRefeicao(agora, abrirRu),
           ],
         );
       },
