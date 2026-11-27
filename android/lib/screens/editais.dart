@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 
+import '../data/aviso_monitoria.dart';
 import '../data/editais.dart';
+import '../data/editais_horas.dart';
+import '../data/preferencias.dart';
 import '../theme/app_cores.dart';
 import '../theme/app_medidas.dart';
 import '../theme/app_texto.dart';
@@ -20,6 +23,9 @@ class TelaEditais extends StatefulWidget {
 
 class _TelaEditaisState extends State<TelaEditais> {
   var _fonte = FonteEditais.proaes;
+  // Filtros do iPhone 1.8: só os que rendem horas complementares; na Prograd, só os de monitoria.
+  var _filtroHoras = false;
+  var _filtroMonitoria = false;
   final _lendo = <FonteEditais>{};
   final _falhas = <FonteEditais, TipoFalhaEditais>{};
   final _vistas = <FonteEditais>{};
@@ -58,7 +64,10 @@ class _TelaEditaisState extends State<TelaEditais> {
   void _escolher(int i) {
     final f = FonteEditais.values[i];
     if (f == _fonte) return;
-    setState(() => _fonte = f);
+    setState(() {
+      _fonte = f;
+      if (f != FonteEditais.prograd) _filtroMonitoria = false;
+    });
     if (!_vistas.contains(f)) _carregar(f);
   }
 
@@ -105,6 +114,12 @@ class _TelaEditaisState extends State<TelaEditais> {
       ];
     }
     final agora = DateTime.now();
+    final monitoria = _filtroMonitoria && _fonte == FonteEditais.prograd;
+    final filtrando = _filtroHoras || monitoria;
+    final lista = [
+      for (final e in lidos.lista)
+        if ((!_filtroHoras || horasComplementares(e) != null) && (!monitoria || ehEditalMonitoria(e))) e,
+    ];
     return [
       if (lidos.lista.isEmpty)
         Cartao(
@@ -114,18 +129,32 @@ class _TelaEditaisState extends State<TelaEditais> {
             texto: 'A ${_fonte.nome} ainda não publicou editais em ${lidos.ano}.',
           ),
         )
+      else if (lista.isEmpty)
+        Cartao(
+          child: EstadoVazio(
+            icone: Icons.filter_alt_off_rounded,
+            titulo: monitoria && !_filtroHoras
+                ? 'Nenhum edital de monitoria agora'
+                : 'Nenhum edital com horas complementares agora',
+            texto: 'A ${_fonte.nome} não tem edital assim em ${lidos.ano}. Tire o filtro para ver todos.',
+          ),
+        )
       else ...[
         Text(
-          '${contagemEditais(lidos.lista.length, lidos.ano)} · ${rotuloLidoEm(lidos.lidoEm, agora)}',
+          '${filtrando ? '${lista.length} de ${lidos.lista.length} editais' : contagemEditais(lidos.lista.length, lidos.ano)}'
+          ' · ${rotuloLidoEm(lidos.lidoEm, agora)}',
           style: AppTexto.rotulo.copyWith(color: c.secundario),
         ),
-        for (final e in lidos.lista)
+        for (final e in lista)
           _LinhaEdital(
             icone: Icons.campaign_rounded,
             titulo: e.titulo,
             subtitulo: rotuloDatas(e, agora),
+            horas: horasComplementares(e)?.rotulo,
             aoTocar: () => _abrir(e.url),
           ),
+        if (_filtroHoras)
+          Text(notaHorasComplementares, style: AppTexto.rotulo.copyWith(color: c.secundario)),
       ],
       _LinhaEdital(
         icone: Icons.language_rounded,
@@ -164,6 +193,24 @@ class _TelaEditaisState extends State<TelaEditais> {
             aoEscolher: _escolher,
           ),
           Text(_fonte.sobre, style: AppTexto.apoio.copyWith(color: c.secundario)),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              FilterChip(
+                label: const Text('Horas complementares'),
+                selected: _filtroHoras,
+                onSelected: (v) => setState(() => _filtroHoras = v),
+              ),
+              if (_fonte == FonteEditais.prograd)
+                FilterChip(
+                  label: const Text('Monitoria'),
+                  selected: _filtroMonitoria,
+                  onSelected: (v) => setState(() => _filtroMonitoria = v),
+                ),
+            ],
+          ),
+          if (_fonte == FonteEditais.prograd) const _CartaoAvisoMonitoria(),
           ?_aviso(lidos),
           ..._corpo(lidos),
           Text(
@@ -177,12 +224,56 @@ class _TelaEditaisState extends State<TelaEditais> {
   }
 }
 
-/// Edital tocável: título, datas embaixo e o ícone de "abre fora do app".
+/// Liga e desliga o aviso de edital novo de monitoria (Prograd). Sem servidor: o app confere ao abrir.
+class _CartaoAvisoMonitoria extends StatelessWidget {
+  const _CartaoAvisoMonitoria();
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.cores;
+    return ListenableBuilder(
+      listenable: Preferencias.instancia,
+      builder: (context, _) => Cartao(
+        child: Row(
+          children: [
+            IconeQuadrado(icone: Icons.notifications_active_rounded, cor: c.chipTexto, fundo: c.chipFundo),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Avisar quando abrir bolsa de monitoria', style: AppTexto.corpoForte),
+                  Text(
+                    'Ao abrir o app (no máximo a cada 6 h), confiro se saiu edital novo de monitoria na Prograd.',
+                    style: AppTexto.rotulo.copyWith(color: c.secundario),
+                  ),
+                ],
+              ),
+            ),
+            Switch(
+              value: Preferencias.instancia.avisarMonitoria,
+              onChanged: (v) => AvisoMonitoria.instancia.ligar(v),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Edital tocável: título, datas embaixo, horas complementares (se rende) e o ícone de "abre fora do app".
 class _LinhaEdital extends StatelessWidget {
-  const _LinhaEdital({required this.icone, required this.titulo, required this.subtitulo, required this.aoTocar});
+  const _LinhaEdital({
+    required this.icone,
+    required this.titulo,
+    required this.subtitulo,
+    required this.aoTocar,
+    this.horas,
+  });
 
   final IconData icone;
   final String titulo, subtitulo;
+  final String? horas;
   final VoidCallback aoTocar;
 
   @override
@@ -205,6 +296,10 @@ class _LinhaEdital extends StatelessWidget {
                   if (subtitulo.isNotEmpty) ...[
                     const SizedBox(height: 2),
                     Text(subtitulo, style: AppTexto.rotulo.copyWith(color: c.secundario)),
+                  ],
+                  if (horas != null) ...[
+                    const SizedBox(height: 6),
+                    Selo(texto: horas!, cor: c.verde, fundo: c.verdeFundo),
                   ],
                 ],
               ),

@@ -7,14 +7,18 @@ const _host = 'https://www3.ufac.br/';
 const _tipos = {'Folder', 'File', 'Document', 'Link'};
 
 class Edital {
-  const Edital({required this.titulo, required this.url, this.publicadoEm, this.atualizadoEm});
+  const Edital({required this.titulo, required this.url, this.descricao = '', this.publicadoEm, this.atualizadoEm});
 
   final String titulo, url;
+
+  /// Resumo que a Ufac escreve no site (às vezes com a carga horária do certificado).
+  final String descricao;
   final DateTime? publicadoEm, atualizadoEm;
 
   Map<String, dynamic> paraMapa() => {
     'titulo': titulo,
     'url': url,
+    'descricao': descricao,
     'publicadoEm': publicadoEm?.toIso8601String(),
     'atualizadoEm': atualizadoEm?.toIso8601String(),
   };
@@ -22,6 +26,7 @@ class Edital {
   factory Edital.deMapa(Map<String, dynamic> m) => Edital(
     titulo: m['titulo'] as String,
     url: m['url'] as String,
+    descricao: m['descricao'] as String? ?? '',
     publicadoEm: _data(m['publicadoEm']),
     atualizadoEm: _data(m['atualizadoEm']),
   );
@@ -51,6 +56,7 @@ List<Edital>? lerEditais(Object? json) {
         Edital(
           titulo: _limpar(i['title']),
           url: i['@id'] as String,
+          descricao: _limpar(i['description']),
           publicadoEm: _data(i['effective']),
           atualizadoEm: _data(i['modified']),
         ),

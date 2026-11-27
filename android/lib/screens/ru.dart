@@ -3,6 +3,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../config.dart';
 import '../data/cardapio.dart';
+import '../data/preferencias.dart';
 import '../data/refeicoes.dart';
 import '../data/repositorio_ru.dart';
 import '../session/regras_sessao.dart';
@@ -166,6 +167,10 @@ class _TelaRuState extends State<TelaRu> {
   }
 }
 
+/// "Saldo baixo" com R$ 2,00 ou menos, como no iPhone (issue #14): menos que uma refeição.
+const limiteSaldoBaixo = 2.0;
+bool saldoBaixo(double saldo) => saldo <= limiteSaldoBaixo + 1e-9;
+
 /// Login só do eTICKET (para quem pulou no começo, ou pelas Configurações). Ao concluir, lê saldo e cardápio.
 void conectarEticket(BuildContext context) {
   Navigator.of(context).push(
@@ -236,7 +241,7 @@ class CartaoSaldo extends StatelessWidget {
           Text(tituloSaldo, style: AppTexto.apoio.copyWith(color: c.sobrePrimariaSuave)),
           const SizedBox(height: 2),
           ListenableBuilder(
-            listenable: RepositorioRu.instancia,
+            listenable: Listenable.merge([RepositorioRu.instancia, Preferencias.instancia]),
             builder: (context, _) {
               final ru = RepositorioRu.instancia;
               final hora = ru.atualizadoEm;
@@ -247,6 +252,15 @@ class CartaoSaldo extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text.rich(spanMoeda(formatarMoeda(ru.saldo!), AppTexto.saldo.copyWith(color: c.sobrePrimaria))),
+                  if (Preferencias.instancia.avisarSaldoBaixo && saldoBaixo(ru.saldo!)) ...[
+                    const SizedBox(height: 4),
+                    Selo(
+                      texto: 'Saldo baixo · recarregue antes da próxima refeição',
+                      cor: c.perigo,
+                      fundo: c.perigoFundo,
+                    ),
+                    const SizedBox(height: 4),
+                  ],
                   const SizedBox(height: 2),
                   if (hora != null)
                     Text(

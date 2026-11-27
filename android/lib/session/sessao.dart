@@ -195,6 +195,12 @@ Future<PaginaLida> _umaLeitura(Sistema sistema, String endereco, (String, String
     initialSettings: InAppWebViewSettings(useShouldOverrideUrlLoading: true),
     shouldOverrideUrlLoading: (controle, acao) async {
       final destino = acao.request.url;
+      // Sem sessão, a Biblioteca manda para /biblioteca/login.action e de lá para logout.action, que derruba
+      // também a sessão do Portal (visto pelo Matheus no iPhone 1.8.2). Para antes: é sessão vencida.
+      if (destino != null && sairDaBiblioteca(destino)) {
+        concluir(const PaginaLida(ResultadoVerificacao.expirada));
+        return NavigationActionPolicy.CANCEL;
+      }
       final https = destino == null ? null : versaoHttps(destino);
       if (https == null) return NavigationActionPolicy.ALLOW;
       await controle.loadUrl(urlRequest: URLRequest(url: WebUri.uri(https)));

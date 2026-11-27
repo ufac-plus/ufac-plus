@@ -59,3 +59,6 @@ EstadoPagina classificar(Sistema sistema, Uri uri) {
       return caminho.startsWith('/biblioteca') ? EstadoPagina.logado : EstadoPagina.outra;
   }
 }
+
+/// O `logout.action` da Biblioteca apaga também a sessão do Portal: a WebView nunca segue esse salto.
+bool sairDaBiblioteca(Uri uri) => uri.host == 'portal.ufac.br' && uri.path.toLowerCase() == '/biblioteca/logout.action';

@@ -83,7 +83,10 @@ List<EmprestimoHistorico>? lerHistoricoBiblioteca(String resposta) {
   if (!texto.startsWith('{')) texto = html.parse(resposta).body?.text.trim() ?? '';
   try {
     final j = jsonDecode(texto);
-    if (j is! Map || j['rows'] is! List) return null;
+    if (j is! Map || !j.containsKey('rows')) return null;
+    // Sem empréstimos o site manda "rows": null (visto pelo Matheus no iPhone 1.8.2): é lista vazia, não erro.
+    if (j['rows'] == null) return const [];
+    if (j['rows'] is! List) return null;
     final lista = <EmprestimoHistorico>[];
     for (final r in j['rows'] as List) {
       if (r is! Map) continue;

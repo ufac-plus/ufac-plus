@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import '../config.dart';
 import '../data/academico.dart';
 import '../data/atualizacoes.dart';
+import '../data/aviso_monitoria.dart';
 import '../data/classroom.dart';
 import '../data/feriados.dart';
 import '../data/foto_perfil.dart';
@@ -384,11 +385,27 @@ class _LinhaAtividade extends StatelessWidget {
 /// feriado). Fica tudo num item só da lista: sem aviso, não sobra espaço vazio. Também na
 /// Início do professor.
 Widget cabecalhoComFaixas(BuildContext context, DateTime agora, Widget cabecalho) => ListenableBuilder(
-  listenable: Listenable.merge([Sessao.instancia, Atualizacoes.instancia, Preferencias.instancia]),
+  listenable: Listenable.merge([
+    Sessao.instancia,
+    Atualizacoes.instancia,
+    Preferencias.instancia,
+    AvisoMonitoria.instancia,
+  ]),
   builder: (context, _) {
     final atualizacoes = Atualizacoes.instancia;
     final feriado = Preferencias.instancia.avisarFeriados ? avisoFeriado(agora) : null;
+    final monitoria = Preferencias.instancia.avisarMonitoria ? AvisoMonitoria.instancia.novo : null;
     final faixas = <Widget>[
+      if (monitoria != null)
+        FaixaAviso(
+          icone: Icons.notifications_active_rounded,
+          texto: 'Saiu edital de monitoria na Prograd:\n${monitoria.titulo}',
+          acao: 'Ver edital',
+          aoTocar: () {
+            AvisoMonitoria.instancia.dispensar();
+            abrirForaDoApp(context, Uri.parse(monitoria.url), falha: 'Não consegui abrir o navegador neste celular.');
+          },
+        ),
       // O portal cai em menos de 1 hora; só o eTICKET merece aviso.
       if (Sessao.instancia.expirados.contains(Sistema.eticket))
         FaixaAviso(

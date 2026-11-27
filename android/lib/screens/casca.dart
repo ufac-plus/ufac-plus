@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../data/atualizacoes.dart';
+import '../data/aviso_monitoria.dart';
 import '../data/classroom.dart';
 import '../data/perfil.dart';
 import '../data/repositorio_biblioteca.dart';
@@ -43,6 +44,8 @@ class _CascaState extends State<Casca> with WidgetsBindingObserver {
       RepositorioPortal.instancia.aoAbrirApp();
       // O Classroom do app lê como aluno; para professor ainda não serve.
       AtividadesDaSemana.instancia.aoAbrirApp();
+      // Lista pública da Prograd, só com o aviso ligado e no máximo a cada 6 h.
+      AvisoMonitoria.instancia.conferir();
     }
     Atualizacoes.instancia.aoAbrirApp();
   }

@@ -273,3 +273,10 @@ Prints dos temas: `flutter test test/visual_test.dart --update-goldens --tags vi
 - **Registro de eventos** (`lib/data/registro.dart`): só leituras que falham e o login automático recusado, até 60, anonimizados (sem números longos, CPF, e-mail nem parâmetros de endereço). Vai no "Relatar um problema" junto com o estado do app; "Sair" apaga.
 - **Créditos** em Configurações, com o mesmo texto do iPhone e do site.
 - A revisão de visual do iPhone 1.4 (vidro, tipografia do iOS) não foi copiada: o Android segue o Material 3 e os tokens da seção 6 do `CLAUDE.md`.
+
+## 2026-11-26: Android 0.1.15 — o que veio do iPhone 1.8
+- **Saldo baixo (#14):** o cartão do RU mostra "Saldo baixo" com R$ 2,00 ou menos (`limiteSaldoBaixo`), chave em Configurações ligada por padrão.
+- **Editais:** a mesma regra de horas complementares do iPhone (`lib/data/editais_horas.dart`): horas escritas no edital ("certificado de", "carga horária de", fora "semanais") valem; senão, a faixa típica da categoria, sempre como estimativa; auxílios, vagas e cadastros não rendem horas. Filtros "Horas complementares" e, na Prograd, "Monitoria". O `Edital` passou a guardar a descrição do site.
+- **Aviso de monitoria:** o iPhone manda push pelo servidor do Matheus. O Android não tem servidor (regra 3) nem roda nada em segundo plano nos sites da Ufac, então confere a lista pública da Prograd **ao abrir o app**, no máximo a cada 6 h e só com o aviso ligado (desligado por padrão). A 1ª leitura só marca o que existe; edital novo vira uma faixa na Início.
+- **Biblioteca (#8):** `rows: null` é lista vazia; a WebView nunca segue `/biblioteca/logout.action`, que derrubava a sessão do Portal (a leitura conta como sessão vencida).
+- A barra de abas em vidro do iPhone 1.8.1 e o problema do Chaves do iCloud (#4) são só do iPhone.

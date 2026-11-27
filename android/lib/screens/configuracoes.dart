@@ -256,6 +256,25 @@ class TelaConfiguracoes extends StatelessWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
+                          Text('Avisar quando o saldo estiver baixo', style: AppTexto.corpoForte),
+                          Text(
+                            'No cartão do RU, com R\$ 2,00 ou menos',
+                            style: AppTexto.apoio.copyWith(color: c.secundario),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Switch(value: prefs.avisarSaldoBaixo, onChanged: prefs.definirAvisarSaldoBaixo),
+                  ],
+                ),
+              ),
+              Cartao(
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
                           Text('Avisar sobre atividades', style: AppTexto.corpoForte),
                           Text(
                             'Às ${horaAvisoClassroom}h, o que falta entregar no Classroom até o dia seguinte',
