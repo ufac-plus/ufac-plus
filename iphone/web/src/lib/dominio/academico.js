@@ -3,22 +3,23 @@ import { deDataISO, diaDaSemana, formatarHoraMin, soData } from './formatos.js';
 import { semAulaPorFeriado } from './feriados.js';
 
 /**
- * Faltas: numa disciplina de 60 h pode ter até 16 e a 17ª reprova (decisão de Arthur).
- * Vale sem a carga horária da disciplina, como estimativa.
+ * Faltas: numa disciplina de 72 h (as de Direito) pode ter até 16 e a 17ª reprova (decisão de Arthur, 23/11/2026,
+ * a mesma do Android). Vale sem a carga horária da disciplina, como estimativa.
  */
 export const LIMITE_FALTAS = 16;
+/** Carga horária de referência das 16 faltas: 72 h. O limite das outras cargas é proporcional a ela. */
+export const CARGA_REFERENCIA_FALTAS = 72;
 
 /**
  * Regimento Geral da Ufac, arts. 314, I, e 320, II: reprova quem não tem 75% de frequência
- * nas atividades programadas. O portal conta as faltas por hora-aula (uma por período da chamada,
- * e 2 h de aula são 2 períodos). As 16 de Arthur numa de 60 h equivalem a 25% de 64 aulas
- * programadas, ou seja, a carga × 16/15 (16 semanas para um crédito de 15 h). Assim o limite
- * escala com a carga: 30 h → 8, 45 h → 12, 60 h → 16, 90 h → 24.
+ * nas atividades programadas. O portal conta as faltas por hora-aula. As 16 de uma disciplina de 72 h
+ * são 25% de 64 aulas programadas, ou seja, a carga × 8/9. O limite escala com a carga:
+ * 36 h → 8, 54 h → 12, 72 h → 16, 108 h → 24 (e 60 h → 13).
  */
-export const aulasProgramadas = (cargaHoraria) => (cargaHoraria * LIMITE_FALTAS) / 60 / 0.25;
-// Para baixo: com uma carga que não é múltipla de 15 h (ex.: 40 h), arredondar para cima deixaria a última
-// falta "permitida" abaixo dos 75%. Nas cargas comuns (30, 45, 60, 75, 90 h) dá o mesmo número.
-export const faltasPermitidas = (cargaHoraria) => Math.floor((cargaHoraria * LIMITE_FALTAS) / 60 + 1e-9);
+export const aulasProgramadas = (cargaHoraria) => (cargaHoraria * LIMITE_FALTAS) / CARGA_REFERENCIA_FALTAS / 0.25;
+// Para baixo: com uma carga fora dos múltiplos de 9 h (ex.: 60 h), arredondar para cima deixaria a última
+// falta "permitida" abaixo dos 75%.
+export const faltasPermitidas = (cargaHoraria) => Math.floor((cargaHoraria * LIMITE_FALTAS) / CARGA_REFERENCIA_FALTAS + 1e-9);
 
 export const primeiroNome = (nome) => nome.split(' ')[0];
 

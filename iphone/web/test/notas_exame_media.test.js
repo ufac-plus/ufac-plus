@@ -72,15 +72,19 @@ describe('exameDaDisciplina', () => {
     expect(exameDaDisciplina(disciplina({ mf: '5,8' }), { atual: true })).toBeNull();
   });
   test('passou do limite de faltas: não tem direito ao exame (art. 317)', () => {
-    expect(exameDaDisciplina(disciplina({ faltas: '17' }), { atual: true })).toBeNull();
-    expect(exameDaDisciplina(disciplina({ faltas: '16' }), { atual: true })).not.toBeNull();
+    // Disciplina de 72 h (as de Direito): 16 passam, a 17ª reprova.
+    expect(exameDaDisciplina(disciplina({ faltas: '17', carga: 72 }), { atual: true })).toBeNull();
+    expect(exameDaDisciplina(disciplina({ faltas: '16', carga: 72 }), { atual: true })).not.toBeNull();
+    // A carga padrão do teste é 60 h: 13 passam, a 14ª reprova.
+    expect(exameDaDisciplina(disciplina({ faltas: '14' }), { atual: true })).toBeNull();
+    expect(exameDaDisciplina(disciplina({ faltas: '13' }), { atual: true })).not.toBeNull();
   });
-  test('sem a carga horária, o limite de faltas é estimativa: com faltas, nada (numa de 30 h já teria passado)', () => {
+  test('sem a carga horária, o limite de faltas é estimativa: com faltas, nada (numa de 36 h já teria passado)', () => {
     expect(exameDaDisciplina(disciplina({ faltas: '10', carga: null }), { atual: true })).toBeNull();
     expect(exameDaDisciplina(disciplina({ faltas: '1', carga: null }), { atual: true })).toBeNull();
     expect(exameDaDisciplina(disciplina({ faltas: '0', carga: null }), { atual: true })).not.toBeNull();
-    expect(exameDaDisciplina(disciplina({ faltas: '8', carga: 30 }), { atual: true })).not.toBeNull();
-    expect(exameDaDisciplina(disciplina({ faltas: '9', carga: 30 }), { atual: true })).toBeNull();
+    expect(exameDaDisciplina(disciplina({ faltas: '8', carga: 36 }), { atual: true })).not.toBeNull();
+    expect(exameDaDisciplina(disciplina({ faltas: '9', carga: 36 }), { atual: true })).toBeNull();
   });
   test('sem quadro de notas: nada', () => {
     expect(exameDaDisciplina({ ...disciplina(), notas: [], resumo: [] }, { atual: true })).toBeNull();

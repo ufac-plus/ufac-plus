@@ -4,6 +4,7 @@ import { atualizarCardapio, atualizarRu } from '../lib/dados.js';
 import { INSTAGRAM_RU } from '../lib/config.js';
 import { formatarData, formatarHoraMin } from '../lib/dominio/formatos.js';
 import { AVISO_REPETIDO, REFEICOES, cardapioValeEm, itensDoCardapio, proximaRefeicao, refeicaoRepetida } from '../lib/dominio/refeicoes.js';
+import { lerPrefs } from '../lib/push.js';
 import { abreFora, barraCompacta, botaoRedondo, cabecalho, esqueleto, html, ic, item, marcarSegmento, montar, puxarParaAtualizar, remontar, segmentos } from '../ui/componentes.js';
 import { cartaoSaldo, expirado, faixaExpirada, faixaFalha, fraseDeFalha, semEticket } from './comum.js';
 import { abrirQr } from './qr.js';
@@ -25,7 +26,7 @@ export default async function ru(tela, { ir, parametro, acoes }) {
 
   async function desenhar() {
     const agora = new Date();
-    const [saldo, cardapio] = await Promise.all([ler('ru'), ler('cardapio')]);
+    const [saldo, cardapio, prefs] = await Promise.all([ler('ru'), ler('cardapio'), lerPrefs()]);
     const refeicao = REFEICOES.find((r) => r.id === escolhida);
     const deHoje = cardapioValeEm(cardapio, agora);
     const itens = deHoje ? itensDoCardapio(cardapio.textos[refeicao.id]) : [];
@@ -36,7 +37,7 @@ export default async function ru(tela, { ir, parametro, acoes }) {
       ${cabecalho({ titulo: 'RU', sub: 'Restaurante Universitário · Ufac', acoes: botaoRedondo('menu', 'Menu', 'menu') })}
       ${(await expirado('eticket')) ? faixaExpirada('eticket') : ''}
       ${falha ? faixaFalha(falha) : ''}
-      ${cartaoSaldo({ ru: saldo, semRu, carregando, agora, largo: true, rotulo: 'Saldo' })}
+      ${cartaoSaldo({ ru: saldo, semRu, carregando, agora, largo: true, rotulo: 'Saldo', avisarSaldo: prefs.saldoBaixo !== false })}
       <section class="cartao" aria-labelledby="titulo-cardapio">
         <h2 id="titulo-cardapio" style="margin-bottom:2px">Cardápio de hoje</h2>
         <div class="apoio" style="margin-bottom:12px">${formatarData(agora)}${encerrado ? html`<br>As refeições de hoje já foram servidas. O cardápio de amanhã costuma sair perto de cada horário.` : ''}</div>

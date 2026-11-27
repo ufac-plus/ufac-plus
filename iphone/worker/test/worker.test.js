@@ -146,7 +146,7 @@ describe('agenda', () => {
   });
   test('validar descarta texto livre e tipos estranhos', () => {
     const a = validarAgenda({ semanais: [{ m: 10, t: 'aula', r: 'Direito Civil VII' }, { m: 10, t: 'hack', r: 'x' }, { m: 20, t: 'aula', r: 'a1', extra: 'nome' }], unicos: 'x' });
-    expect(a).toEqual({ semanais: [{ m: 20, t: 'aula', r: 'a1' }], unicos: [], pausas: [] });
+    expect(a).toEqual({ semanais: [{ m: 20, t: 'aula', r: 'a1' }], unicos: [], pausas: [], monitoria: false });
   });
   test('cron envia o push e apaga inscrição morta', async () => {
     const kv = new Map();

@@ -33,6 +33,39 @@ export function lerResultadoAcervo(pagina) {
 /** "Título: subtítulo", como no Android. */
 export const tituloCompleto = (t) => (t.subtitulo ? `${t.titulo}: ${t.subtitulo}` : t.titulo);
 
+/** "03/10/2026 14:05:11" vira texto ISO (hora local). Null se vier vazio ou em outro formato. */
+function dataHora(texto) {
+  const m = /^(\d{2})\/(\d{2})\/(\d{4})(?:\s+(\d{2}):(\d{2}))?/.exec(String(texto ?? '').trim());
+  if (!m) return null;
+  return new Date(Number(m[3]), Number(m[2]) - 1, Number(m[1]), Number(m[4] ?? 0), Number(m[5] ?? 0)).toISOString();
+}
+
+/**
+ * Histórico de empréstimos (usuario/emprestimo/gridhistorico.action). O site responde JSON; pelo navegador ele
+ * pode chegar dentro de um <pre>. Cada item: { titulo, retiradaEm, devolucaoEm } (devolucaoEm null = ainda emprestado).
+ * Null se não der para ler.
+ */
+export function lerHistoricoBiblioteca(resposta) {
+  let texto = String(resposta ?? '').trim();
+  if (!texto.startsWith('{')) texto = limpo(parse(texto).body?.textContent);
+  let j;
+  try {
+    j = JSON.parse(texto);
+  } catch {
+    return null;
+  }
+  if (!j || typeof j !== 'object' || !Array.isArray(j.rows)) return null;
+  const lista = [];
+  for (const r of j.rows) {
+    const nome = limpo(r?.nome);
+    const retiradaEm = dataHora(r?.dataRetirada);
+    if (!nome || !retiradaEm) continue;
+    // "Título /" fica sem a barra solta do fim.
+    lista.push({ titulo: nome.replace(/\s*\/\s*$/, ''), retiradaEm, devolucaoEm: dataHora(r?.dataEntrega) });
+  }
+  return lista;
+}
+
 /**
  * Exemplares de um título (ajax/exemplar/itens.action). Null se a resposta não for a tabela de exemplares.
  * As colunas são achadas pelo nome do cabeçalho, não pela posição.

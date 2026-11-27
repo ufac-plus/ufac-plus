@@ -174,8 +174,11 @@ export default async function login(tela, { parametro, ir, voltar, acoes }) {
       rotular();
     });
     // Quando o Chaves preenche o item escolhido, o CPF vem dentro do rótulo.
+    // O item de OUTRO sistema ("… · eTICKET" na etapa do Portal) traz a senha dele: esvazia o campo da senha,
+    // senão ela seria enviada ao sistema errado (issue #4).
     conta.addEventListener('input', () => {
       const d = soDigitos(conta.value);
+      const outroSistema = conta.value.includes('·') && !conta.value.trim().endsWith(`· ${s.rotuloChaves}`);
       if (d.length === 11 && indice > 0 && d !== cpf) {
         // Etapa 2: o eTICKET tem de ser da mesma pessoa do Portal. Item do Chaves de outro CPF não troca nada.
         montar(tela.querySelector('#erro'), faixa({ icone: 'alerta', titulo: 'Esse item do Chaves é de outro CPF.', texto: 'Escolha o item com o seu CPF e "eTICKET".', tipo: 'perigo' }));
@@ -183,6 +186,10 @@ export default async function login(tela, { parametro, ir, voltar, acoes }) {
       } else if (d.length === 11) {
         cpf = d;
         campoCpf.value = mascararCpf(cpf);
+        if (outroSistema) {
+          tela.querySelector('#senha').value = '';
+          montar(tela.querySelector('#erro'), faixa({ icone: 'alerta', titulo: 'O Chaves preencheu a senha de outro sistema.', texto: `Escolha o item "${cpfFormatado(cpf)} · ${s.rotuloChaves}" ou digite a ${s.campo[0].toLowerCase()}${s.campo.slice(1)}.`, tipo: 'perigo' }));
+        }
       }
       rotular();
     });

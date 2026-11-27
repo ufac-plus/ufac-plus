@@ -125,10 +125,10 @@ export const faixa = ({ icone: nome = 'info', titulo, texto = '', tipo = '', aca
 /** Aviso de link que sai do app, só para o leitor de tela. */
 export const abreFora = cru('<span class="oculto-leitor"> (abre no Safari)</span>');
 
-export const item = ({ icone: nome, titulo, sub = '', acao = '', href = '', tipoIcone = '', direita = '' }) => {
+export const item = ({ icone: nome, titulo, sub = '', acao = '', href = '', tipoIcone = '', direita = '', extra = null }) => {
   const dentro = html`
     ${nome ? html`<span class="icone ${tipoIcone}">${ic(nome)}</span>` : ''}
-    <span class="cresce"><span class="titulo">${titulo}</span>${sub ? html`<span class="apoio sub">${sub}</span>` : ''}</span>
+    <span class="cresce"><span class="titulo">${titulo}</span>${sub ? html`<span class="apoio sub">${sub}</span>` : ''}${extra?.rotulo ? html`<span class="selo verde selo-horas">${ic('horarios')}<span>${extra.rotulo}</span></span>` : ''}</span>
     ${direita || (acao || href ? html`<span class="seta">${ic(href ? 'abrir' : 'seta')}</span>` : '')}`;
   const fora = href && !href.startsWith('/');
   if (href) return html`<a class="item tocavel" href="${href}" ${fora ? html`target="_blank" rel="noopener"` : ''}>${dentro}${fora ? abreFora : ''}</a>`;

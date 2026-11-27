@@ -13,10 +13,10 @@ function data(s) {
   return Number.isNaN(new Date(s).getTime()) ? null : s;
 }
 
-/** Lista de { titulo, url, publicadoEm, atualizadoEm }, na ordem da Ufac (mais novo primeiro). */
+/** Lista de { titulo, descricao, url, publicadoEm, atualizadoEm }, na ordem da Ufac (mais novo primeiro). */
 export function lerEditais(json) {
   if (!json || typeof json !== 'object' || !Array.isArray(json.items)) return null;
   return json.items
     .filter((i) => i && TIPOS.has(i['@type']) && typeof i['@id'] === 'string' && i['@id'].startsWith(HOST) && limpar(i.title))
-    .map((i) => ({ titulo: limpar(i.title), url: i['@id'], publicadoEm: data(i.effective), atualizadoEm: data(i.modified) }));
+    .map((i) => ({ titulo: limpar(i.title), descricao: limpar(i.description), url: i['@id'], publicadoEm: data(i.effective), atualizadoEm: data(i.modified) }));
 }

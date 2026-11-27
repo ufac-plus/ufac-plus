@@ -4,6 +4,7 @@ import { SemConexao } from '../lib/api.js';
 import { ErroLeitura } from '../lib/dados.js';
 import { abreFora, avisar, confirmar, faixa, html, ic } from '../ui/componentes.js';
 import { formatarHora, formatarMoeda, rotuloAtualizado } from '../lib/dominio/formatos.js';
+import { saldoBaixo } from '../lib/dominio/saldo.js';
 import { URL_RECARGA } from '../lib/config.js';
 import { sair } from '../lib/sessao.js';
 
@@ -76,7 +77,7 @@ export async function avisoSemEticket() {
  * Cartão do saldo do RU (Início e aba RU). largo: botões um embaixo do outro, com texto mais longo (aba RU).
  * O valor e a hora formam um grupo só para o leitor de tela.
  */
-export function cartaoSaldo({ ru, semRu, carregando, agora, largo = false, rotulo = 'Saldo no RU' }) {
+export function cartaoSaldo({ ru, semRu, carregando, agora, largo = false, rotulo = 'Saldo no RU', avisarSaldo = false }) {
   const valor = semRu
     ? html`<div class="saldo-ausente">eTICKET não conectado</div><div class="apoio">Conecte para ver o saldo e o QR de entrada.</div>`
     : ru
@@ -87,10 +88,12 @@ export function cartaoSaldo({ ru, semRu, carregando, agora, largo = false, rotul
   const conectar = html`<button class="botao acento ${largo ? 'largo' : ''} tocavel" data-acao="conectar-eticket">${ic('ru')} Conectar o eTICKET</button>`;
   const qr = html`<button class="botao acento ${largo ? 'largo' : ''} tocavel" data-acao="qr">${ic('qr')} ${largo ? 'Mostrar QR de entrada' : 'Mostrar QR'}</button>`;
   const recarga = html`<a class="botao contorno ${largo ? 'largo' : ''} tocavel" href="${URL_RECARGA}" target="_blank" rel="noopener">${ic('mais')} ${largo ? 'Recarregar créditos' : 'Recarregar'}${abreFora}</a>`;
+  const baixo = avisarSaldo && !semRu && saldoBaixo(ru);
   return html`
     <section class="cartao tingido" aria-labelledby="rotulo-saldo">
       <h2 class="rotulo" id="rotulo-saldo">${rotulo}</h2>
       <div role="group">${valor}</div>
+      ${baixo ? html`<div class="aviso-saldo" role="status">${ic('alerta')}<span>Saldo baixo · recarregue antes da próxima refeição</span></div>` : ''}
       ${largo
         ? html`<div class="pilha" style="gap:10px;margin-top:16px">${semRu ? conectar : html`${qr}${recarga}`}</div>
           <div class="apoio nota-rodape" style="margin-top:10px;padding:0">${semRu ? 'O cardápio abaixo funciona sem o eTICKET.' : 'A recarga abre o site oficial do eTICKET no Safari.'}</div>`

@@ -60,8 +60,16 @@ const hora = (min) => {
 const mesmoDia = (a, b) => a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
 const REFEICOES = { cafe: ['Café', 6 * 60 + 30], almoco: ['Almoço', 11 * 60], jantar: ['Jantar', 18 * 60] };
 
-async function aviso(t, r) {
+async function aviso(t, r, dados = {}) {
   const agora = new Date();
+  if (t === 'monitoria') {
+    return {
+      titulo: 'Bolsa de monitoria na Prograd',
+      corpo: String(dados.titulo || 'Saiu um edital novo de monitoria na Prograd. Toque para conferir.').slice(0, 200),
+      url: '/#/editais/prograd',
+      tag: `monitoria-${r || 'prograd'}`,
+    };
+  }
   if (t === 'aula') {
     const [dia, ini] = r.split('-').map(Number);
     let aulas = (await lerDoBanco('horarios'))?.aulas ?? [];
@@ -115,7 +123,7 @@ self.addEventListener('push', (e) => {
       } catch {
         /* push sem conteúdo */
       }
-      const a = await aviso(dados.t, String(dados.r ?? ''));
+      const a = await aviso(dados.t, String(dados.r ?? ''), dados);
       if (a.selo && self.navigator.setAppBadge) self.navigator.setAppBadge(a.selo).catch(() => {});
       // O iPhone exige mostrar uma notificação para cada push recebido.
       await self.registration.showNotification(a.titulo, { body: a.corpo, tag: a.tag, icon: '/icones/icone-192.png', data: { url: a.url } });

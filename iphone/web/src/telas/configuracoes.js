@@ -51,13 +51,15 @@ export default async function configuracoes(tela, { voltar, ir, perfil, acoes, p
       <section class="cartao lista" id="avisos">
         ${cabecalhoSecao('Avisos e notificações', 'Lembretes no iPhone antes das aulas e das refeições.')}
         ${interruptor('feriados', prefs.feriados, 'Avisar sobre feriados', 'Na véspera, na tela Início')}
+        ${perfil !== 'professor' ? interruptor('saldoBaixo', prefs.saldoBaixo !== false, 'Avisar sobre saldo baixo no RU', 'No cartão do RU, com R$ 2,00 ou menos') : ''}
         ${!pushOk
           ? html`<div style="padding:12px 16px">${instalado() ? faixa({ icone: 'celular', titulo: 'Notificações indisponíveis neste iPhone', texto: 'O iPhone só manda notificações para apps da web no iOS 16.4 ou mais novo.' }) : faixa({ icone: 'celular', titulo: 'Instale o app na Tela de Início', texto: 'O iPhone só manda notificações para apps instalados (iOS 16.4 ou mais novo).' })}${!instalado() ? html`<a class="botao claro largo tocavel" style="margin-top:10px" href="/instalar/">Como instalar</a>` : ''}</div>`
           : html`
             ${!permitido ? html`<div style="padding:12px 16px"><button class="botao largo tocavel" data-acao="permitir">${ic('sino')} Permitir notificações</button></div>` : ''}
             ${interruptor('aulas', prefs.avisos.aulas, 'Próxima aula', `${ANTECEDENCIA_MIN} min antes de cada aula`)}
             ${perfil !== 'professor' ? REFEICOES.map((r) => interruptor(`refeicao:${r.id}`, prefs.avisos.refeicoes.includes(r.id), r.nome, `${ANTECEDENCIA_MIN} min antes das ${formatarHoraMin(r.inicioMin)}, de segunda a sexta`)) : ''}
-            ${classroomDisponivel() ? interruptor('classroom', prefs.avisos.classroom, 'Atividades do Classroom', 'Às 19h, com o que vence até o dia seguinte') : ''}`}
+            ${classroomDisponivel() ? interruptor('classroom', prefs.avisos.classroom, 'Atividades do Classroom', 'Às 19h, com o que vence até o dia seguinte') : ''}
+            ${perfil !== 'professor' ? interruptor('monitoria', prefs.avisos.monitoria, 'Bolsa de monitoria (Prograd)', 'Quando sair edital novo de monitoria') : ''}`}
       </section>
 
       <section class="cartao lista">
@@ -96,14 +98,16 @@ export default async function configuracoes(tela, { voltar, ir, perfil, acoes, p
     }
     await mudarPrefs((p) => {
       if (chave === 'feriados') p.feriados = ligado;
+      else if (chave === 'saldoBaixo') p.saldoBaixo = ligado;
       else if (chave === 'aulas') p.avisos.aulas = ligado;
       else if (chave === 'classroom') p.avisos.classroom = ligado;
+      else if (chave === 'monitoria') p.avisos.monitoria = ligado;
       else if (chave.startsWith('refeicao:')) {
         const id = chave.split(':')[1];
         p.avisos.refeicoes = ligado ? [...new Set([...p.avisos.refeicoes, id])] : p.avisos.refeicoes.filter((x) => x !== id);
       }
     });
-    if (chave === 'feriados') return;
+    if (chave === 'feriados' || chave === 'saldoBaixo') return;
     try {
       if (ligado && Notification.permission !== 'granted') await ativarPush();
       else await sincronizarAgenda();
@@ -114,6 +118,7 @@ export default async function configuracoes(tela, { voltar, ir, perfil, acoes, p
       await mudarPrefs((p) => {
         if (chave === 'aulas') p.avisos.aulas = false;
         else if (chave === 'classroom') p.avisos.classroom = false;
+        else if (chave === 'monitoria') p.avisos.monitoria = false;
         else p.avisos.refeicoes = p.avisos.refeicoes.filter((x) => `refeicao:${x}` !== chave);
       });
     }
@@ -145,7 +150,7 @@ export default async function configuracoes(tela, { voltar, ir, perfil, acoes, p
   acoes.limpar = async () => {
     const ok = await confirmar({ titulo: 'Limpar dados salvos?', texto: 'Apaga notas, horários, saldo e cardápio deste iPhone. Você continua na conta e tudo é lido de novo da Ufac.', sim: 'Limpar' });
     if (!ok) return;
-    for (const k of ['ru', 'cardapio', 'identificacao', 'horarios', 'notas', 'historico', 'classroom', 'professor', 'idInterno', 'urlMaisRelatorios', 'urlComunicacoes', 'diagnosticoPortal', 'registro', 'bibliotecaBuscas', 'bibliotecaExemplares']) await apagar(k);
+    for (const k of ['ru', 'cardapio', 'identificacao', 'horarios', 'notas', 'historico', 'classroom', 'professor', 'idInterno', 'urlMaisRelatorios', 'urlComunicacoes', 'diagnosticoPortal', 'registro', 'bibliotecaBuscas', 'bibliotecaExemplares', 'bibliotecaHistorico']) await apagar(k);
     await apagarEditaisGuardados();
     avisar('Dados apagados. Tudo será lido de novo.');
   };

@@ -1,6 +1,7 @@
 // Notificações no lugar das Live Activities. O KV guarda só a inscrição de push e os horários:
 // nenhum nome de disciplina, cardápio ou atividade. O push leva só o tipo e uma referência,
 // e o próprio iPhone monta o texto com os dados que já tem.
+import { novosEditaisMonitoria } from './monitoria.js';
 import { enviarPush } from './webpush.js';
 
 const MINUTOS_SEMANA = 7 * 24 * 60;
@@ -28,7 +29,13 @@ export function validarAgenda(a) {
   const pausas = (Array.isArray(a?.pausas) ? a.pausas : [])
     .filter((p) => Number.isInteger(p?.de) && Number.isInteger(p?.ate) && p.ate > p.de && p.ate - p.de <= 2 * 1440)
     .map(({ de, ate }) => ({ de, ate }));
-  return { semanais: semanais.slice(0, MAX_EVENTOS), unicos: unicos.slice(0, MAX_EVENTOS), pausas: pausas.slice(0, 40) };
+  return {
+    semanais: semanais.slice(0, MAX_EVENTOS),
+    unicos: unicos.slice(0, MAX_EVENTOS),
+    pausas: pausas.slice(0, 40),
+    // Aviso de edital novo de monitoria na Prograd: só sim ou não.
+    monitoria: a?.monitoria === true,
+  };
 }
 
 export function validarInscricao(i) {
@@ -64,7 +71,7 @@ export async function inscrever(env, corpo) {
   if (!inscricao) return new Response('Inscrição inválida', { status: 400 });
   const agenda = validarAgenda(corpo?.agenda);
   await env.INSCRICOES.put(await chaveDe(inscricao.endpoint), JSON.stringify({ inscricao, agenda }), { expirationTtl: VALIDADE_S });
-  return Response.json({ ok: true, eventos: agenda.semanais.length + agenda.unicos.length });
+  return Response.json({ ok: true, eventos: agenda.semanais.length + agenda.unicos.length + (agenda.monitoria ? 1 : 0) });
 }
 
 export async function cancelar(env, corpo) {
@@ -78,11 +85,14 @@ export async function dispararAgendados(env, fimMs, fetcher = fetch) {
   const vapid = { publica: env.VAPID_PUBLICA, privada: env.VAPID_PRIVADA, assunto: env.VAPID_ASSUNTO };
   let cursor;
   let enviados = 0;
+  const querMonitoria = []; // quem ligou o aviso de edital novo de monitoria
   do {
     const lista = await env.INSCRICOES.list({ prefix: 'i:', cursor });
     for (const { name } of lista.keys) {
+      if (!name.startsWith('i:')) continue; // o estado dos editais ("meta:") não é inscrição
       const registro = await env.INSCRICOES.get(name, 'json');
       if (!registro) continue;
+      if (registro.agenda?.monitoria) querMonitoria.push({ name, inscricao: registro.inscricao });
       for (const e of eventosNaJanela(registro.agenda, fimMs)) {
         const status = await enviarPush(registro.inscricao, { t: e.t, r: e.r }, vapid, fetcher);
         if (status === 404 || status === 410) {
@@ -94,5 +104,21 @@ export async function dispararAgendados(env, fimMs, fetcher = fetch) {
     }
     cursor = lista.list_complete ? undefined : lista.cursor;
   } while (cursor);
+
+  // Edital novo de monitoria: só confere o site da Ufac se alguém pediu o aviso.
+  if (querMonitoria.length) {
+    const novos = await novosEditaisMonitoria(env, fimMs, fetcher).catch(() => []);
+    const mortas = new Set();
+    for (const edital of novos) {
+      for (const { name, inscricao } of querMonitoria) {
+        if (mortas.has(name)) continue;
+        const status = await enviarPush(inscricao, { t: 'monitoria', r: edital.codigo, titulo: edital.titulo.slice(0, 160) }, vapid, fetcher);
+        if (status === 404 || status === 410) {
+          mortas.add(name);
+          await env.INSCRICOES.delete(name);
+        } else if (status < 300) enviados++;
+      }
+    }
+  }
   return enviados;
 }

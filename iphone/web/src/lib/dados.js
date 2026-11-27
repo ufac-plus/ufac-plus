@@ -86,7 +86,7 @@ export async function atualizarHistorico() {
 
 // ---------- Portal do Aluno ----------
 
-async function idInterno() {
+export async function idInterno() {
   const salvo = await ler('idInterno');
   if (salvo) return salvo;
   const html = await lerPagina('portal', caminhos.portalInicio);

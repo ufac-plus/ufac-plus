@@ -46,6 +46,8 @@ test('manifest e metas do iPhone', async ({ page, request }) => {
   await page.goto('/');
   await expect(page.locator('meta[name="viewport"]')).toHaveAttribute('content', /viewport-fit=cover/);
   await expect(page.locator('meta[name="apple-mobile-web-app-capable"]')).toHaveAttribute('content', 'yes');
+  // iOS 26: "black-translucent" encolhe a área do app e deixa faixa preta embaixo (WebKit 301994): não pode voltar.
+  await expect(page.locator('meta[name="apple-mobile-web-app-status-bar-style"]')).toHaveCount(0);
   await expect(page.locator('link[rel="apple-touch-icon"]')).toHaveAttribute('href', '/icones/icone-180.png');
   const manifest = await (await request.get('/manifest.webmanifest')).json();
   expect(manifest).toMatchObject({ display: 'standalone', start_url: '/#/inicio', lang: 'pt-BR' });
@@ -71,6 +73,30 @@ test('login em etapas, claro e escuro', async ({ page }) => {
   await expect(page.getByText('O eTICKET não aceitou')).toBeVisible();
 });
 
+test('Chaves preenche o item de outro sistema: a senha é esvaziada (issue #4)', async ({ page }) => {
+  await workerFalso(page);
+  await page.goto('/#/login/aluno');
+  await page.getByLabel('Senha do Portal do Aluno').fill('senha-do-eticket');
+  // O Safari escolhe o item "… · eTICKET" na etapa do Portal.
+  await page.evaluate(() => {
+    const c = document.querySelector('#conta');
+    c.value = '000.000.000-00 · eTICKET';
+    c.dispatchEvent(new Event('input', { bubbles: true }));
+  });
+  await expect(page.getByLabel('CPF')).toHaveValue('000.000.000-00');
+  await expect(page.getByLabel('Conta salva no Chaves do iCloud')).toHaveValue('000.000.000-00 · Portal do Aluno');
+  await expect(page.getByLabel('Senha do Portal do Aluno')).toHaveValue('');
+  await expect(page.getByText('O Chaves preencheu a senha de outro sistema.')).toBeVisible();
+  // Com o item certo, a senha é mantida.
+  await page.getByLabel('Senha do Portal do Aluno').fill('senha-de-teste');
+  await page.evaluate(() => {
+    const c = document.querySelector('#conta');
+    c.value = '000.000.000-00 · Portal do Aluno';
+    c.dispatchEvent(new Event('input', { bubbles: true }));
+  });
+  await expect(page.getByLabel('Senha do Portal do Aluno')).toHaveValue('senha-de-teste');
+});
+
 test('senha errada mostra erro humano', async ({ page }) => {
   await workerFalso(page);
   await page.goto('/#/login/aluno');
@@ -90,6 +116,12 @@ test('login em 2 etapas e telas do aluno', async ({ page }) => {
   await expect(page.getByText('12345678901')).toBeVisible();
   await expect(page.getByText('Curso Exemplo · Ufac')).toBeVisible();
   await expect(page.getByText(/^Jantar · 18h$/)).toBeVisible();
+  // Barra de abas ancorada na borda de baixo da tela (e não flutuando acima dela), com a lente de 52 px.
+  const alturaTela = page.viewportSize().height;
+  const abas = await page.locator('.abas').boundingBox();
+  expect(Math.round(abas.y + abas.height)).toBe(alturaTela);
+  expect(Math.round((await page.locator('.abas .lente').boundingBox()).height)).toBe(52);
+  await expect(page.getByText('Saldo baixo')).toHaveCount(0); // R$ 12,50: sem aviso
   await print(page, '02-inicio-claro', { fullPage: true });
 
   await page.getByRole('link', { name: 'Horários' }).click();
@@ -100,7 +132,7 @@ test('login em 2 etapas e telas do aluno', async ({ page }) => {
   await expect(page.getByText('Disciplina Atual')).toBeVisible();
   await page.getByText('Disciplina Atual').click();
   await expect(page.getByRole('cell', { name: 'Média Final' })).toBeVisible();
-  await expect(page.getByText('4 de 16 faltas permitidas').first()).toBeVisible();
+  await expect(page.getByText('4 de 13 faltas permitidas').first()).toBeVisible();
   await print(page, '04-notas');
 
   await page.getByRole('link', { name: 'Relatórios' }).click();
@@ -239,6 +271,37 @@ test('Portal entra sozinho quando a sessão cai, e para quando a chave é deslig
   await page.getByRole('button', { name: 'Visualizar Atestado de Matrícula' }).click();
   await expect(page.getByText('Senha do Portal do Aluno')).toBeVisible();
   expect(await loginsDoPortal()).toBe(2);
+});
+
+test('saldo baixo no RU avisa no cartão e some quando a chave é desligada (issue #14)', async ({ page }) => {
+  await workerFalso(page);
+  await entrar(page);
+  await expect(page.getByText('Saldo baixo')).toHaveCount(0);
+  const gravarSaldo = (saldo) => page.evaluate((valor) => new Promise((ok) => {
+    const r = indexedDB.open('ufacplus', 1);
+    r.onsuccess = () => {
+      const tx = r.result.transaction('kv', 'readwrite');
+      const st = tx.objectStore('kv');
+      const g = st.get('ru');
+      g.onsuccess = () => st.put({ ...g.result, saldo: valor, lidoEm: new Date().toISOString() }, 'ru');
+      tx.oncomplete = () => ok();
+    };
+  }), saldo);
+  await gravarSaldo(2);
+  await page.reload();
+  await expect(page.getByText('Saldo baixo · recarregue antes da próxima refeição')).toBeVisible();
+  await page.getByRole('link', { name: 'RU' }).click();
+  await expect(page.getByText('Saldo baixo · recarregue antes da próxima refeição')).toBeVisible();
+  await gravarSaldo(2.01);
+  await page.reload();
+  await expect(page.getByText('Saldo baixo')).toHaveCount(0);
+  // Chave nas Configurações.
+  await gravarSaldo(1);
+  await page.goto('/#/configuracoes');
+  await page.getByText('Avisar sobre saldo baixo no RU').click();
+  await page.goto('/#/inicio');
+  await expect(page.getByRole('heading', { name: 'Olá, Pessoa' })).toBeVisible();
+  await expect(page.getByText('Saldo baixo')).toHaveCount(0);
 });
 
 test('modo escuro', async ({ page }) => {
@@ -479,6 +542,13 @@ test('Biblioteca: buscar no acervo e ver os exemplares, sem precisar do login do
   await page.getByRole('button', { name: /Biblioteca/ }).click();
   await expect(page.getByRole('heading', { name: 'Biblioteca' })).toBeVisible();
   await expect(page.getByText('Pesquise no acervo')).toBeVisible();
+  // Meus empréstimos (precisa do login; o app entrou sozinho de novo): um devolvido e um ainda emprestado.
+  await expect(page.getByRole('heading', { name: 'Meus empréstimos' })).toBeVisible();
+  await expect(page.getByText('1 em empréstimo')).toBeVisible();
+  await expect(page.getByText('Manual fictício de contratos')).toBeVisible();
+  await expect(page.getByText('Em empréstimo', { exact: true })).toBeVisible();
+  await expect(page.getByRole('link', { name: /Renovar empréstimos/ })).toHaveAttribute('href', 'https://portal.ufac.br/biblioteca/usuario/renovacao/emprestimos.action');
+  await expect(page.getByRole('link', { name: /Reservas/ })).toHaveAttribute('href', 'https://portal.ufac.br/biblioteca/usuario/reserva/reservas.action');
   const antes = (await worker.pedidos()).length;
   await page.getByLabel('Título, autor ou assunto').fill('direito civil');
   await page.getByLabel('Título, autor ou assunto').press('Enter');
@@ -526,7 +596,7 @@ test('Créditos: quem faz o UFAC+, aberto pelas Configurações', async ({ page 
 // interceptar o que passa por ele: aqui ele fica desligado para o site da Ufac simulado responder.
 test.describe('sem service worker', () => {
   test.use({ serviceWorkers: 'block' });
-  test('Editais da Proaes e da Prograd: lista pública lida direto do site da Ufac, com cache', async ({ page }) => {
+  test('Editais da Proaes, Prograd e Proex: lista pública lida direto do site da Ufac, com cache', async ({ page }) => {
     await workerFalso(page);
     // Site da Ufac simulado com as fixtures públicas (nenhum pedido sai para a Ufac).
     const pedidos = [];
@@ -534,7 +604,7 @@ test.describe('sem service worker', () => {
       const u = new URL(rota.request().url());
       pedidos.push(u.pathname + u.search);
       expect(rota.request().headers().accept).toBe('application/json');
-      const arquivo = u.pathname.startsWith('/prograd/') ? 'prograd_editais.json' : 'proaes_editais.json';
+      const arquivo = u.pathname.startsWith('/prograd/') ? 'prograd_editais.json' : u.pathname.startsWith('/proex/') ? 'proex_editais.json' : 'proaes_editais.json';
       const corpo = readFileSync(resolve(import.meta.dirname, '../fixtures/public', arquivo), 'utf8');
       return rota.fulfill({ contentType: 'application/json', headers: { 'Access-Control-Allow-Origin': '*' }, body: corpo });
     });
@@ -553,6 +623,33 @@ test.describe('sem service worker', () => {
     await page.getByRole('radio', { name: 'Prograd' }).click();
     await expect(page.getByRole('link', { name: /Edital Prograd nº 47\/2026/ })).toBeVisible();
     await expect(page.getByText('4 editais de 2026')).toBeVisible();
+    // Prograd: aviso de monitoria (neste teste o app não está instalado: o convite é para instalar).
+    await expect(page.getByText('Avise-me quando abrir bolsa de monitoria')).toBeVisible();
+    // Filtro "Horas complementares": some o que é só auxílio/transporte e fica o que rende horas, com a faixa.
+    const horas = page.getByRole('button', { name: 'Horas complementares', exact: true });
+    await expect(horas).toHaveAttribute('aria-pressed', 'false');
+    await horas.click();
+    await expect(horas).toHaveAttribute('aria-pressed', 'true');
+    await expect(page.getByText('2 editais de 4')).toBeVisible();
+    await expect(page.getByRole('link', { name: /PET Agronomia/ })).toContainText('~30 a 60 h complementares por semestre');
+    await expect(page.getByRole('link', { name: /Brinquedotecas/ })).toBeVisible();
+    await expect(page.getByRole('link', { name: /Concessão de Transporte/ })).toHaveCount(0);
+    await expect(page.getByRole('link', { name: /Auxílio para Realização/ })).toHaveCount(0);
+    await expect(page.getByText('Confira a carga no PDF')).toBeVisible();
+    // O filtro vale também na Proex.
+    await page.getByRole('radio', { name: 'Proex' }).click();
+    await expect(page.getByRole('link', { name: /Semanas Acadêmicas/ })).toContainText('~10 a 40 h complementares (pelo certificado)');
+    await expect(page.getByRole('link', { name: /Auxílio Pró-Esporte para estudantes Atletas/ })).toHaveCount(0);
+    await print(page, '46-editais-horas');
+    // Sem o filtro, a Proex mostra os 17 editais; monitoria só existe como filtro na Prograd.
+    await horas.click();
+    await expect(page.getByText('17 editais de 2026')).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Monitoria', exact: true })).toHaveCount(0);
+    await page.getByRole('radio', { name: 'Prograd' }).click();
+    await page.getByRole('button', { name: 'Monitoria', exact: true }).click();
+    await expect(page.getByText('Nenhum edital de monitoria agora')).toBeVisible();
+    await page.getByRole('button', { name: 'Monitoria', exact: true }).click();
+    await expect(page.getByText('4 editais de 2026')).toBeVisible();
     // Voltar à Proaes e reabrir a tela vem do cache: um pedido só por pró-reitoria.
     await page.getByRole('radio', { name: 'Proaes' }).click();
     await expect(edital).toBeVisible();
@@ -561,6 +658,7 @@ test.describe('sem service worker', () => {
     await expect(edital).toBeVisible();
     expect(pedidos.filter((p) => p.startsWith('/proaes/@search'))).toHaveLength(1);
     expect(pedidos.filter((p) => p.startsWith('/prograd/@search'))).toHaveLength(1);
+    expect(pedidos.filter((p) => p.startsWith('/proex/@search'))).toHaveLength(1);
     await page.emulateMedia({ colorScheme: 'dark' });
     await print(page, '45-editais-escuro');
   });

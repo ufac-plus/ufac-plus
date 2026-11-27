@@ -1,11 +1,11 @@
 // Biblioteca: pesquisa no acervo (pública) e exemplares de cada título. A busca só sai ao tocar em Buscar
 // (ou Enter), nunca a cada letra, e as últimas buscas ficam guardadas por algumas horas.
 import { ler } from '../lib/armazenamento.js';
-import { buscarNoAcervo, doCache, exemplaresDoTitulo, normalizarTermo, VALIDADE_BUSCA_MS } from '../lib/biblioteca.js';
+import { buscarNoAcervo, doCache, exemplaresDoTitulo, historicoGuardado, lerHistoricoEmprestimos, normalizarTermo, VALIDADE_BUSCA_MS } from '../lib/biblioteca.js';
 import { oficial } from '../lib/config.js';
-import { rotuloAtualizado } from '../lib/dominio/formatos.js';
+import { formatarDataCurta, rotuloAtualizado } from '../lib/dominio/formatos.js';
 import { tituloCompleto } from '../lib/extratores/biblioteca.js';
-import { abrirFolha, anunciar, avisar, botaoRedondo, cabecalho, esqueleto, html, ic, item, montar, notaRodape, vazio } from '../ui/componentes.js';
+import { abrirFolha, anunciar, avisar, botaoRedondo, cabecalho, cabecalhoSecao, esqueleto, faixa, html, ic, item, montar, notaRodape, vazio } from '../ui/componentes.js';
 import { faixaFalha, fraseDeFalha } from './comum.js';
 
 const POR_PAGINA = 30; // a Ufac devolve até 500 linhas de uma vez: mostra aos poucos
@@ -71,7 +71,7 @@ function mostrarExemplares(titulo) {
   carregar();
 }
 
-export default async function biblioteca(tela, { voltar, acoes }) {
+export default async function biblioteca(tela, { voltar, ir, acoes }) {
   const id = await ler('idInterno');
   // Abre com a última busca, se ainda vale (sem pedir nada à Ufac).
   const buscas = await ler('bibliotecaBuscas');
@@ -93,12 +93,57 @@ export default async function biblioteca(tela, { voltar, acoes }) {
       </div>
     </form>
     <div class="resultado-acervo pilha"></div>
-    ${id ? html`<section class="cartao lista">${item({ icone: 'globo', titulo: 'Meu Espaço e renovação', sub: 'Empréstimos, reservas e renovação no site oficial', href: oficial.biblioteca(id) })}</section>` : ''}
-    ${notaRodape('A pesquisa no acervo é pública: não usa seu login.')}
+    <div class="emprestimos pilha"></div>
+    ${id ? html`<section class="cartao lista">
+      ${item({ icone: 'globo', titulo: 'Meu Espaço', sub: 'Entra pelo site oficial, no Safari', href: oficial.biblioteca(id) })}
+      ${item({ icone: 'atualizar', titulo: 'Renovar empréstimos', sub: 'Se der erro, entre antes por "Meu Espaço"', href: oficial.bibliotecaRenovacao })}
+      ${item({ icone: 'livro', titulo: 'Reservas', sub: 'Se der erro, entre antes por "Meu Espaço"', href: oficial.bibliotecaReservas })}
+    </section>` : ''}
+    ${notaRodape('A pesquisa no acervo é pública: não usa seu login. Renovar e reservar é no site oficial.')}
   </div>`);
 
   const area = tela.querySelector('.resultado-acervo');
   const entrada = tela.querySelector('#termo-acervo');
+  const areaEmprestimos = tela.querySelector('.emprestimos');
+
+  // Meus empréstimos: o que está salvo aparece na hora; a leitura nova (no máximo a cada 6 h) vem por cima.
+  let historico = await historicoGuardado();
+  let falhaHistorico = '';
+  let semSessao = false;
+  function desenharEmprestimos() {
+    if (!id) return montar(areaEmprestimos, '');
+    const lista = historico?.lista ?? [];
+    const abertos = lista.filter((e) => !e.devolucaoEm);
+    const cabeca = html`${cabecalhoSecao('Meus empréstimos', historico ? `${abertos.length ? (abertos.length === 1 ? '1 em empréstimo' : `${abertos.length} em empréstimo`) : 'Nenhum em empréstimo agora'} · ${rotuloAtualizado(historico.lidoEm)}` : 'Do site oficial da Biblioteca')}`;
+    const linhas = lista.slice(0, 10).map((e) => item({
+      icone: 'livro',
+      titulo: e.titulo,
+      sub: e.devolucaoEm ? `Retirado em ${formatarDataCurta(new Date(e.retiradaEm))} · devolvido em ${formatarDataCurta(new Date(e.devolucaoEm))}` : `Retirado em ${formatarDataCurta(new Date(e.retiradaEm))}`,
+      direita: e.devolucaoEm ? '' : html`<span class="selo">Em empréstimo</span>`,
+    }));
+    montar(areaEmprestimos, html`
+      ${semSessao ? faixa({ icone: 'cadeado', titulo: 'Entre no Portal para ver seus empréstimos', texto: historico ? 'Os últimos empréstimos lidos continuam aqui.' : '', acao: 'entrar-portal', rotuloAcao: 'Entrar de novo' }) : ''}
+      ${falhaHistorico ? faixaFalha(falhaHistorico) : ''}
+      ${historico || (!semSessao && !falhaHistorico) ? html`<section class="cartao lista">${cabeca}${historico
+        ? (lista.length ? linhas : vazio('livro', 'Nenhum empréstimo ainda', 'Quando você pegar um livro, ele aparece aqui.'))
+        : html`<div style="padding:12px 16px">${esqueleto(3)}</div>`}</section>` : ''}`);
+  }
+  async function atualizarEmprestimos(forcar = false) {
+    if (!id) return;
+    falhaHistorico = '';
+    semSessao = false;
+    try {
+      const novo = await lerHistoricoEmprestimos({ forcar });
+      if (novo === null) semSessao = (await ler('idInterno')) != null;
+      else historico = novo;
+    } catch (e) {
+      falhaHistorico = fraseDeFalha(e, 'a Biblioteca', historico?.lidoEm);
+    }
+    if (tela.isConnected) desenharEmprestimos();
+  }
+  desenharEmprestimos();
+  atualizarEmprestimos();
+  acoes['entrar-portal'] = () => ir('login/portal');
 
   function desenhar() {
     if (estado.tipo === 'inicio') {
@@ -157,6 +202,9 @@ export default async function biblioteca(tela, { voltar, acoes }) {
     if (titulo) mostrarExemplares(titulo);
   };
   // "Tentar de novo" da faixa de falha.
-  tela.addEventListener('atualizar', () => termo && buscar());
+  tela.addEventListener('atualizar', (e) => {
+    if (termo) buscar();
+    atualizarEmprestimos(!!e.detail?.forcar);
+  });
   desenhar();
 }

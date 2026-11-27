@@ -23,6 +23,7 @@ describe('extrator de editais', () => {
     expect(lista).toHaveLength(6);
     expect(lista[0]).toEqual({
       titulo: 'Edital Proaes nº 22/2026 - Programa Pulsar Acolhe',
+      descricao: '',
       url: 'https://www3.ufac.br/proaes/2026/edital-proaes-no-22-2026-programa-pulsar-acolhe',
       publicadoEm: '2026-11-06T22:13:02+00:00',
       atualizadoEm: '2026-11-16T14:49:40+00:00',
@@ -50,7 +51,7 @@ describe('extrator de editais', () => {
         { '@id': 'https://www3.ufac.br/proaes/2026/b', '@type': 'Folder', title: ' Edital  de teste ', effective: 'None', modified: null },
       ],
     });
-    expect(lista).toEqual([{ titulo: 'Edital de teste', url: 'https://www3.ufac.br/proaes/2026/b', publicadoEm: null, atualizadoEm: null }]);
+    expect(lista).toEqual([{ titulo: 'Edital de teste', descricao: '', url: 'https://www3.ufac.br/proaes/2026/b', publicadoEm: null, atualizadoEm: null }]);
   });
 });
 
@@ -63,7 +64,7 @@ describe('endereços', () => {
     expect(u.searchParams.get('path.depth')).toBe('1');
     expect(u.searchParams.get('sort_on')).toBe('effective');
     expect(u.searchParams.get('sort_order')).toBe('descending');
-    expect(u.searchParams.getAll('metadata_fields')).toEqual(['effective', 'modified']);
+    expect(u.searchParams.getAll('metadata_fields')).toEqual(['effective', 'modified', 'description']);
     expect(enderecoPasta('prograd', 2026)).toBe('https://www3.ufac.br/prograd/2026');
   });
 });
@@ -85,13 +86,15 @@ describe('leitura com cache', () => {
     expect(opcoes.headers.Accept).toBe('application/json');
     expect((await editaisGuardados('proaes')).lista).toHaveLength(6);
   });
-  test('"Limpar dados salvos" apaga os editais das duas fontes', async () => {
+  test('"Limpar dados salvos" apaga os editais das três fontes', async () => {
     const buscar = vi.fn(async () => resposta(fixture('proaes_editais.json')));
     await lerEditaisDe('proaes', { agora, buscar });
     await lerEditaisDe('prograd', { agora, buscar });
+    await lerEditaisDe('proex', { agora, buscar });
     await apagarEditaisGuardados();
     expect(await editaisGuardados('proaes')).toBeUndefined();
     expect(await editaisGuardados('prograd')).toBeUndefined();
+    expect(await editaisGuardados('proex')).toBeUndefined();
     expect(Object.keys(gravados)).toEqual([]);
   });
   test('dentro da validade não pede de novo; puxar para atualizar pede', async () => {
@@ -145,5 +148,50 @@ describe('datas no formato brasileiro', () => {
   test('outro ano mostra o ano; sem data, nada', () => {
     expect(rotuloDatas({ publicadoEm: '2025-12-10T12:00:00+00:00', atualizadoEm: null }, agora)).toBe('Publicado em 10 de dezembro de 2025');
     expect(rotuloDatas({ publicadoEm: null, atualizadoEm: null }, agora)).toBe('');
+  });
+});
+
+describe('Proex e horas complementares', async () => {
+  const { ehEditalMonitoria, infoHorasComplementares, FONTES } = await import('../src/lib/editais.js');
+  const lista = (nome) => lerEditais(fixture(nome));
+  const achar = (itens, trecho) => itens.find((e) => e.titulo.includes(trecho));
+
+  test('a Proex é a terceira fonte e a fixture dela tem 17 editais', () => {
+    expect(Object.keys(FONTES)).toEqual(['proaes', 'prograd', 'proex']);
+    expect(lista('proex_editais.json')).toHaveLength(17);
+  });
+
+  test('monitoria: monitoria, monitores e Promaed; o resto não', () => {
+    expect(ehEditalMonitoria({ titulo: 'Edital Prograd nº 10/2026 - Seleção de Monitores', descricao: '', url: 'https://www3.ufac.br/prograd/2026/a' })).toBe(true);
+    expect(ehEditalMonitoria({ titulo: 'Programa de Monitoria Acadêmica', url: '' })).toBe(true);
+    expect(ehEditalMonitoria({ titulo: 'Edital do Promaed', url: '' })).toBe(true);
+    for (const e of lista('prograd_editais.json')) expect(ehEditalMonitoria(e)).toBe(false);
+  });
+
+  test('auxílios, transporte, moradia e cadastros não rendem horas', () => {
+    for (const e of lista('proaes_editais.json')) {
+      if (/Pulsar|parceiros|Pró-PcD|Passe Livre|Primeira Infância/i.test(e.titulo)) expect(infoHorasComplementares(e), e.titulo).toBeNull();
+    }
+    for (const e of lista('proex_editais.json')) {
+      if (/Aux[ií]lio|Apoio para apresentação|Bolsista Administrativo/i.test(e.titulo)) expect(infoHorasComplementares(e), e.titulo).toBeNull();
+    }
+    expect(infoHorasComplementares(achar(lista('prograd_editais.json'), 'Transporte'))).toBeNull();
+    expect(infoHorasComplementares(achar(lista('prograd_editais.json'), 'Auxílio para Realização'))).toBeNull();
+  });
+
+  test('categorias com a faixa típica (estimativa)', () => {
+    expect(infoHorasComplementares(achar(lista('prograd_editais.json'), 'PET Agronomia'))).toEqual({ categoria: 'Ensino · PET', horas: null, rotulo: '~30 a 60 h complementares por semestre', estimado: true });
+    expect(infoHorasComplementares(achar(lista('prograd_editais.json'), 'Brinquedotecas'))).toMatchObject({ categoria: 'Bolsa acadêmica', estimado: true });
+    expect(infoHorasComplementares(achar(lista('proex_editais.json'), 'Semanas Acadêmicas'))).toMatchObject({ categoria: 'Evento', rotulo: '~10 a 40 h complementares (pelo certificado)' });
+    expect(infoHorasComplementares(achar(lista('proex_editais.json'), 'Programas de Extensão Universitária'))).toMatchObject({ categoria: 'Extensão', rotulo: '~30 a 60 h complementares' });
+    expect(infoHorasComplementares(achar(lista('proex_editais.json'), 'Projetos em Música'))).toMatchObject({ categoria: 'Cultura / Esporte' });
+    expect(infoHorasComplementares(achar(lista('proaes_editais.json'), 'JUBS'))).toMatchObject({ categoria: 'Cultura / Esporte', rotulo: '~15 a 30 h complementares' });
+    expect(infoHorasComplementares({ titulo: 'Seleção de monitores', descricao: '' })).toMatchObject({ categoria: 'Monitoria' });
+  });
+
+  test('horas escritas no edital valem mais; carga semanal não conta', () => {
+    expect(infoHorasComplementares({ titulo: 'Curso de formação com certificado de 40h', descricao: '' })).toMatchObject({ horas: 40, rotulo: '40 h complementares', estimado: false });
+    expect(infoHorasComplementares({ titulo: 'Seleção de monitores com carga horária de 12h semanais', descricao: '' })).toMatchObject({ categoria: 'Monitoria', horas: null, estimado: true });
+    expect(infoHorasComplementares({ titulo: 'Seleção de monitores com carga horária de 12 horas semanais', descricao: '' })).toMatchObject({ horas: null });
   });
 });

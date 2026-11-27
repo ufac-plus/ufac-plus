@@ -10,7 +10,7 @@ function blocoFaltas(d) {
   if (!s) return '';
   const largura = Math.min(100, (s.faltas / (s.permitidas + 1)) * 100);
   const texto = s.nivel === 'limite' ? `${s.faltas} faltas: passou do limite de ${s.permitidas}` : `${s.faltas} de ${s.permitidas} faltas permitidas`;
-  // Sem a carga horária da turma, o limite é o de uma disciplina de 60 h: deixar claro que é estimativa.
+  // Sem a carga horária da turma, o limite é o de uma disciplina de 72 h: deixar claro que é estimativa.
   const detalhe = s.estimado
     ? 'Estimativa: não consegui ler a carga horária desta disciplina.'
     : `Frequência ${s.frequencia}% · carga de ${s.cargaHoraria} h · a ${s.permitidas + 1}ª falta reprova`;
@@ -107,7 +107,7 @@ export default async function notas(tela, { ir, acoes }) {
                     ${blocoExame(d, n.atual)}`
                 : ''}
             </section>`)}
-      ${n ? notaRodape('É preciso ter 75% de frequência. As faltas permitidas dependem da carga horária de cada disciplina: 16 numa de 60 h, 8 numa de 30 h.') : ''}
+      ${n ? notaRodape('É preciso ter 75% de frequência. As faltas permitidas dependem da carga horária de cada disciplina: 16 numa de 72 h, 8 numa de 36 h.') : ''}
     `);
   }
 

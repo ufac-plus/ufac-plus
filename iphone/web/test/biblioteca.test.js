@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, test } from 'vitest';
 import { caminhoBusca, caminhoExemplares, doCache, guardarNoCache, normalizarTermo } from '../src/lib/biblioteca.js';
-import { lerExemplares, lerResultadoAcervo, tituloCompleto } from '../src/lib/extratores/biblioteca.js';
+import { lerExemplares, lerHistoricoBiblioteca, lerResultadoAcervo, tituloCompleto } from '../src/lib/extratores/biblioteca.js';
 
 const fixture = (nome) => readFileSync(resolve(__dirname, '../../fixtures', nome), 'utf8');
 
@@ -66,5 +66,23 @@ describe('Biblioteca: endereços e cache', () => {
     const nova = guardarNoCache(entradas, { chave: 'c', lidoEm: em(0) }, 6 * hora, 2, agora);
     expect(nova.map((e) => e.chave)).toEqual(['c', 'a']);
     expect(guardarNoCache(nova, { chave: 'a', lidoEm: em(0) }, 6 * hora, 5, agora).map((e) => e.chave)).toEqual(['a', 'c']);
+  });
+});
+
+describe('Biblioteca: histórico de empréstimos', () => {
+  test('lê o JSON da fixture (dentro do <pre>): um devolvido e um ainda emprestado', () => {
+    const lista = lerHistoricoBiblioteca(fixture('biblioteca_historico.html'));
+    expect(lista).toHaveLength(2);
+    expect(lista[0].titulo).toBe('Curso de direito civil de exemplo: parte geral / Souza, Maria de Teste.');
+    expect(lista[0].devolucaoEm).not.toBeNull();
+    expect(new Date(lista[0].retiradaEm).getDate()).toBe(3);
+    // "Título /" fica sem a barra solta do fim; sem data de entrega, ainda está emprestado.
+    expect(lista[1]).toMatchObject({ titulo: 'Manual fictício de contratos', devolucaoEm: null });
+  });
+  test('JSON puro funciona e o que não for a lista vira null', () => {
+    expect(lerHistoricoBiblioteca('{"rows":[{"nome":"Livro /","dataRetirada":"01/10/2026 10:00:00","dataEntrega":""}]}')).toHaveLength(1);
+    expect(lerHistoricoBiblioteca('{"rows":[]}')).toEqual([]);
+    expect(lerHistoricoBiblioteca('{"rows":[{"nome":"","dataRetirada":"x"}]}')).toEqual([]);
+    for (const ruim of [null, '', 'não é json', '<html></html>', '{"a":1}']) expect(lerHistoricoBiblioteca(ruim)).toBeNull();
   });
 });

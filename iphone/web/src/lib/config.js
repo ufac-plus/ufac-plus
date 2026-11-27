@@ -7,7 +7,7 @@ export const CONTATO_EMAIL = import.meta.env?.VITE_CONTATO_EMAIL ?? '';
 /** Número com DDI e DDD, só dígitos (ex.: 5568...). Vazio = sem botão de WhatsApp direto. */
 export const CONTATO_WHATSAPP = import.meta.env?.VITE_CONTATO_WHATSAPP ?? '';
 /** Igual ao número da release no GitHub ("UFAC+ iPhone 1.2" → '1.2'). Sobe junto com cada release nova. */
-export const VERSAO = '1.7';
+export const VERSAO = '1.8';
 
 export const URL_RECARGA = 'https://sistemas.ufac.br/eticket/valorPaga/';
 export const URL_PORTAL_ALUNO = 'https://portal.ufac.br/aluno/index.action';
@@ -51,6 +51,8 @@ export const caminhos = {
 export const oficial = {
   matricula: (id) => `https://portal.ufac.br/aluno/aluno/matricula/solicitacoes.action?matricula=${id}`,
   biblioteca: (id) => `https://portal.ufac.br/biblioteca/pesquisa/pesquisar.action?matricula=${id}`,
+  bibliotecaRenovacao: 'https://portal.ufac.br/biblioteca/usuario/renovacao/emprestimos.action',
+  bibliotecaReservas: 'https://portal.ufac.br/biblioteca/usuario/reserva/reservas.action',
   professorChamada: (idAgenda) => `https://portal.ufac.br/professor/professor/frequencia/lancamento/horaaula/horaaula.action?agenda=${idAgenda}&indexAba=1`,
   professorQuadroNotas: (id) => `https://portal.ufac.br/professor/professor/nota/lancamento/quadro.action?turma=${id}`,
   professorAgenda: (id) => `https://portal.ufac.br/professor/professor/frequencia/agenda/agendaturma/agenda.action?turma=${id}`,

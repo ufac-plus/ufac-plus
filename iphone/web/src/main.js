@@ -309,7 +309,11 @@ const remedir = () => setTimeout(medirFalta, 150);
 window.addEventListener('resize', remedir);
 window.visualViewport?.addEventListener('resize', remedir);
 window.addEventListener('pageshow', remedir);
-document.addEventListener('focusout', () => setTimeout(medirFalta, 400)); // teclado fechou
+document.addEventListener('focusout', () => setTimeout(() => {
+  // Teclado fechou. O WebKit às vezes deixa a área do app encolhida; voltar ao topo da janela e medir de novo destrava.
+  if (!document.activeElement?.matches?.('input, textarea, select')) window.scrollTo(0, 0);
+  medirFalta();
+}, 400));
 document.addEventListener('visibilitychange', () => document.visibilityState === 'visible' && remedir());
 
 async function iniciar() {

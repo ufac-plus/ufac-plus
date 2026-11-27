@@ -8,10 +8,17 @@
     <meta name="theme-color" content="#f3f5f9">
     <meta name="color-scheme" content="light dark">
     <!-- Tema antes do primeiro desenho (main.js confirma com a preferência salva): sem piscar claro no escuro. -->
-    <script>document.documentElement.dataset.tema = matchMedia('(prefers-color-scheme: dark)').matches ? 'escuro' : 'claro';</script>
+    <script>
+      (function () {
+        var escuro = matchMedia('(prefers-color-scheme: dark)').matches;
+        document.documentElement.dataset.tema = escuro ? 'escuro' : 'claro';
+        document.querySelector('meta[name="theme-color"]').setAttribute('content', escuro ? '#000000' : '#f3f5f9');
+      })();
+    </script>
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <!-- Sem apple-mobile-web-app-status-bar-style="black-translucent": no iOS 26 ele encolhe a área do app e deixa
+         uma faixa preta embaixo (WebKit 301994/317153). O padrão do sistema acompanha o tema (claro/escuro). -->
     <meta name="apple-mobile-web-app-title" content="UFAC+">
     <meta name="format-detection" content="telephone=no">
     <meta name="referrer" content="no-referrer">

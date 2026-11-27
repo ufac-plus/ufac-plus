@@ -74,7 +74,7 @@ export default async function inicio(tela, { ir, acoes }) {
               : html`${vazio('pessoa', 'Ainda não li seus dados do Portal')}<button class="botao largo claro tocavel" data-acao="entrar-portal">Entrar no Portal</button>`}
       </section>
 
-      ${cartaoSaldo({ ru, semRu, carregando, agora })}
+      ${cartaoSaldo({ ru, semRu, carregando, agora, avisarSaldo: prefs.saldoBaixo !== false })}
 
       <section class="cartao" aria-labelledby="rotulo-aula">
         <h2 class="rotulo" id="rotulo-aula" style="margin-bottom:6px">Próxima aula</h2>

@@ -1,17 +1,21 @@
 // Pesquisa no acervo da Biblioteca (pública: não precisa do login do Portal). Vai pelo Worker, como o resto.
 // Respeito à Ufac: só busca quando a pessoa toca em Buscar, e guarda as últimas buscas por algumas horas.
-import { pedir, SemConexao } from './api.js';
+import { lerPagina, pedir, SemConexao } from './api.js';
 import { gravar, ler } from './armazenamento.js';
 import { ErroLeitura } from './dados.js';
-import { lerExemplares, lerResultadoAcervo } from './extratores/biblioteca.js';
+import { lerExemplares, lerHistoricoBiblioteca, lerResultadoAcervo } from './extratores/biblioteca.js';
 import { registrar, semParametros } from './registro.js';
 
 export const VALIDADE_BUSCA_MS = 6 * 60 * 60 * 1000;
 export const VALIDADE_EXEMPLARES_MS = 60 * 60 * 1000; // a situação (emprestado/disponível) muda mais rápido
+export const VALIDADE_HISTORICO_MS = 6 * 60 * 60 * 1000;
 const MAX_BUSCAS = 5;
 const MAX_EXEMPLARES = 20;
 
 export const caminhoBusca = (termo) => `/biblioteca/pesquisa/resultado.action?keyword=${encodeURIComponent(termo)}`;
+// A Biblioteca só reconhece a pessoa depois de entrar pelo link com o número interno (como no Android).
+export const caminhoEntradaBiblioteca = (id) => `/biblioteca/pesquisa/pesquisar.action?matricula=${id}`;
+export const caminhoHistorico = '/biblioteca/usuario/emprestimo/gridhistorico.action?_search=false&rows=100&page=1&sidx=dataRetirada&sord=desc';
 export const caminhoExemplares = (t) =>
   `/biblioteca/ajax/exemplar/itens.action?${new URLSearchParams({ idRegistro: t.idRegistro, titulo: t.titulo, subtitulo: '', autor: t.autor ?? '' })}`;
 
@@ -73,5 +77,33 @@ export async function exemplaresDoTitulo(titulo) {
   }
   const entrada = { chave, lidoEm: new Date().toISOString(), lista };
   await gravar('bibliotecaExemplares', guardarNoCache(cache, entrada, VALIDADE_EXEMPLARES_MS, MAX_EXEMPLARES));
+  return entrada;
+}
+
+// ---------- Meus empréstimos (precisa do login do Portal) ----------
+
+/** O que já foi lido (mesmo vencido), para mostrar enquanto atualiza ou quando a sessão caiu. */
+export const historicoGuardado = () => ler('bibliotecaHistorico');
+
+/**
+ * Histórico de empréstimos: { lidoEm, lista }. Lê no máximo a cada 6 horas (ou ao puxar para atualizar).
+ * Null quando não há como ler agora (sem número interno ainda, ou sessão do Portal encerrada).
+ * Lança SemConexao ou ErroLeitura (o histórico guardado fica intacto).
+ */
+export async function lerHistoricoEmprestimos({ forcar = false, agora = Date.now() } = {}) {
+  const guardado = await historicoGuardado();
+  if (!forcar && guardado && agora - new Date(guardado.lidoEm).getTime() < VALIDADE_HISTORICO_MS) return guardado;
+  const id = await ler('idInterno');
+  if (!id) return null;
+  if ((await lerPagina('portal', caminhoEntradaBiblioteca(id))) === null) return null;
+  const texto = await lerPagina('portal', caminhoHistorico);
+  if (texto === null) return null;
+  const lista = lerHistoricoBiblioteca(texto);
+  if (!lista) {
+    registrar('leitura', { o: 'histórico da Biblioteca' });
+    throw new ErroLeitura('Não consegui ler seus empréstimos agora.');
+  }
+  const entrada = { lidoEm: new Date(agora).toISOString(), lista };
+  await gravar('bibliotecaHistorico', entrada);
   return entrada;
 }

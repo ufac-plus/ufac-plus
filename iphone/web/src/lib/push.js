@@ -15,8 +15,12 @@ export const ANTECEDENCIA_MIN = 15;
 export const suportaPush = () => typeof window !== 'undefined' && 'PushManager' in window && 'serviceWorker' in navigator && 'Notification' in window;
 export const instalado = () => matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
 
-export const PREFS_PADRAO = { tema: 'sistema', feriados: true, avisos: { aulas: false, refeicoes: [], classroom: false } };
-export const lerPrefs = async () => ({ ...PREFS_PADRAO, ...((await ler('prefs')) ?? {}) });
+export const PREFS_PADRAO = { tema: 'sistema', feriados: true, saldoBaixo: true, avisos: { aulas: false, refeicoes: [], classroom: false, monitoria: false } };
+export async function lerPrefs() {
+  const salvas = (await ler('prefs')) ?? {};
+  // `avisos` se mistura por dentro: quem guardou as preferências antes de existir "monitoria" não fica sem ela.
+  return { ...PREFS_PADRAO, ...salvas, avisos: { ...PREFS_PADRAO.avisos, ...(salvas.avisos ?? {}) } };
+}
 
 /** Minuto local da semana (domingo 00:00 = 0) para minuto UTC, arredondado para baixo de 5 em 5 (o Cron). */
 export function paraMinutoUtc(diaSemana, minutoDoDia, fusoMin = new Date().getTimezoneOffset()) {
@@ -55,7 +59,8 @@ export function montarAgenda({ prefs, aulas = [], atividades = [], agora = new D
       pausas.push({ de, ate: Math.floor(new Date(dia.getFullYear(), dia.getMonth(), dia.getDate() + 1).getTime() / 60000) });
     }
   }
-  return { semanais, unicos, pausas };
+  // Aviso de edital novo de monitoria na Prograd: só um sim/não (o Worker confere o site da Ufac, sem dado seu).
+  return { semanais, unicos, pausas, monitoria: Boolean(prefs.avisos?.monitoria) };
 }
 
 function chaveParaBytes(b64url) {
@@ -95,7 +100,7 @@ export async function sincronizarAgenda() {
   const atividades = (await ler('classroom'))?.atividades ?? [];
   const agenda = montarAgenda({ prefs, aulas, atividades });
   // Sem nenhum aviso ligado, a inscrição sai do Worker (a política de privacidade promete isso).
-  if (!agenda.semanais.length && !agenda.unicos.length && !prefs.avisos.classroom) {
+  if (!agenda.semanais.length && !agenda.unicos.length && !prefs.avisos.classroom && !agenda.monitoria) {
     await fetch(`${WORKER_URL}/push/cancelar`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },

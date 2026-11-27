@@ -102,7 +102,7 @@ h2[tabindex='-1']:focus {
   -webkit-overflow-scrolling: touch;
   overscroll-behavior-y: contain;
   background: transparent;
-  padding: calc(env(safe-area-inset-top) + var(--esp-3)) max(var(--margem), env(safe-area-inset-right)) calc(var(--inset-baixo) + 112px)
+  padding: calc(env(safe-area-inset-top) + var(--esp-3)) max(var(--margem), env(safe-area-inset-right)) calc(var(--inset-baixo) + 96px)
     max(var(--margem), env(safe-area-inset-left));
 }
 .tela[hidden] {
@@ -170,7 +170,7 @@ h2[tabindex='-1']:focus {
   left: 0;
   right: 0;
   bottom: 0;
-  height: calc(var(--inset-baixo) + 104px);
+  height: calc(var(--inset-baixo) + 80px);
   background: linear-gradient(to top, var(--bg) 0%, var(--bg) 30%, color-mix(in srgb, var(--bg) 70%, transparent) 60%, transparent 100%);
   pointer-events: none;
 }
@@ -545,20 +545,34 @@ h2[tabindex='-1']:focus {
 
 /* ---------- Abas (barra inferior flutuante) ---------- */
 
+/* Barra ancorada na borda de baixo da tela (como a UITabBar do iOS): o fundo vai até o fim e o padding de baixo
+   reserva a barrinha de início, então os rótulos nunca ficam embaixo dela. */
 .abas {
+  --pad-esq: max(10px, env(safe-area-inset-left));
+  --pad-dir: max(10px, env(safe-area-inset-right));
   position: fixed;
   z-index: 30;
-  left: max(14px, env(safe-area-inset-left));
-  right: max(14px, env(safe-area-inset-right));
-  bottom: max(12px, calc(var(--inset-baixo) + 4px));
-  min-height: 64px;
-  border-radius: var(--raio-pilula);
-  corner-shape: round;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  min-height: calc(64px + var(--inset-baixo));
+  border-radius: 0;
   display: grid;
   grid-template-columns: repeat(var(--n, 5), 1fr);
-  padding: 6px;
-  max-width: 560px;
-  margin: 0 auto;
+  padding: 6px var(--pad-dir) calc(6px + var(--inset-baixo)) var(--pad-esq);
+  border-top: 0.5px solid var(--border);
+}
+.abas.vidro::before {
+  display: none;
+}
+@media (min-width: 700px) {
+  .abas {
+    left: 50%;
+    right: auto;
+    width: 560px;
+    transform: translateX(-50%);
+    border-radius: var(--raio-lg) var(--raio-lg) 0 0;
+  }
 }
 .aba {
   position: relative;
@@ -568,6 +582,7 @@ h2[tabindex='-1']:focus {
   align-items: center;
   justify-content: center;
   gap: 2px;
+  height: 52px;
   min-height: 52px;
   font-size: var(--fs-micro);
   font-weight: 500;
@@ -589,9 +604,9 @@ h2[tabindex='-1']:focus {
   position: absolute;
   z-index: 1;
   top: 6px;
-  bottom: 6px;
-  left: 6px;
-  width: calc((100% - 12px) / var(--n, 5));
+  height: 52px;
+  left: var(--pad-esq);
+  width: calc((100% - var(--pad-esq) - var(--pad-dir)) / var(--n, 5));
   border-radius: var(--raio-pilula);
   corner-shape: round;
   background: var(--nav-active-bg);
@@ -1533,6 +1548,53 @@ details summary {
 }
 .texto-credito {
   margin: 8px 0 0;
+}
+
+/* ---------- Editais: filtros e horas complementares ---------- */
+.filtros-editais {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--esp-2);
+}
+.filtros-editais:empty {
+  display: none;
+}
+.chip-filtro {
+  min-height: 44px;
+  padding: 0 var(--esp-4);
+  border-radius: var(--raio-pilula);
+  corner-shape: round;
+  font-size: var(--fs-corpo);
+  font-weight: 600;
+  background: var(--chrome);
+  color: var(--text);
+  box-shadow: inset 0 0 0 1.5px var(--border-forte);
+}
+.chip-filtro[aria-pressed='true'] {
+  background: var(--nav-active-bg);
+  color: var(--nav-active);
+  box-shadow: inset 0 0 0 1.5px var(--nav-active);
+}
+.selo-horas {
+  align-self: flex-start;
+  margin-top: var(--esp-1);
+  white-space: normal;
+}
+.aviso-saldo {
+  display: flex;
+  align-items: center;
+  gap: var(--esp-2);
+  margin-top: var(--esp-3);
+  padding: var(--esp-2) var(--esp-3);
+  border-radius: var(--raio-md);
+  background: rgba(255, 255, 255, 0.18);
+  font-size: var(--fs-legenda);
+  font-weight: 600;
+}
+.aviso-saldo svg {
+  width: 18px;
+  height: 18px;
+  flex: none;
 }
 
 /* ---------- Biblioteca (pesquisa no acervo) ---------- */

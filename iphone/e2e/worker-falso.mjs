@@ -87,6 +87,9 @@ createServer((req, res) => {
       if (q.startsWith('/biblioteca/ajax/exemplar/itens.action')) return responder(200, fixture('biblioteca_itens.html'), `https://portal.ufac.br${q}`);
       if (!estado.portal) return responder(200, fixture('public/portal_login.html'), 'https://portal.ufac.br/aluno/login.action');
       const final = `https://portal.ufac.br${q}`;
+      // Biblioteca com login: a página de entrada e o histórico de empréstimos (JSON).
+      if (q.startsWith('/biblioteca/pesquisa/pesquisar.action')) return responder(200, fixture('biblioteca_resultado_vazio.html'), final);
+      if (q.startsWith('/biblioteca/usuario/emprestimo/gridhistorico.action')) return responder(200, fixture('biblioteca_historico.html'), final);
       if (q.startsWith('/aluno/index.action')) return responder(200, fixture('portal_inicio.html'), final);
       if (q.includes('relatorio/relatorios.action')) return responder(200, fixture('portal_relatorios.html'), final);
       if (q.includes('relatorio/')) return responder(200, PDF, final, 'application/pdf');
