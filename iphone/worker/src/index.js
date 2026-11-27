@@ -47,7 +47,7 @@ export default {
         headers: {
           'Access-Control-Allow-Origin': origem,
           'Access-Control-Allow-Methods': 'GET, POST',
-          'Access-Control-Allow-Headers': 'Content-Type, X-Sessao, X-Requested-With',
+          'Access-Control-Allow-Headers': 'Content-Type, X-Sessao, X-Requested-With, X-Nova-Biblioteca',
           'Access-Control-Max-Age': '86400',
           Vary: 'Origin',
         },

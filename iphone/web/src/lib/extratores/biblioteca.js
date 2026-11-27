@@ -33,11 +33,20 @@ export function lerResultadoAcervo(pagina) {
 /** "Título: subtítulo", como no Android. */
 export const tituloCompleto = (t) => (t.subtitulo ? `${t.titulo}: ${t.subtitulo}` : t.titulo);
 
-/** "03/10/2026 14:05:11" vira texto ISO (hora local). Null se vier vazio ou em outro formato. */
+/** "03/10/2026 14:05:11" (ou ISO "2026-10-03...") vira texto ISO (hora local). Null se vier vazio ou em outro formato. */
 function dataHora(texto) {
-  const m = /^(\d{2})\/(\d{2})\/(\d{4})(?:\s+(\d{2}):(\d{2}))?/.exec(String(texto ?? '').trim());
-  if (!m) return null;
-  return new Date(Number(m[3]), Number(m[2]) - 1, Number(m[1]), Number(m[4] ?? 0), Number(m[5] ?? 0)).toISOString();
+  const s = String(texto ?? '').trim();
+  const m = /^(\d{2})\/(\d{2})\/(\d{4})(?:\s+(\d{2}):(\d{2}))?/.exec(s);
+  if (m) return new Date(Number(m[3]), Number(m[2]) - 1, Number(m[1]), Number(m[4] ?? 0), Number(m[5] ?? 0)).toISOString();
+  const iso = /^(\d{4})-(\d{2})-(\d{2})(?:[T\s](\d{2}):(\d{2}))?/.exec(s);
+  if (iso) return new Date(Number(iso[1]), Number(iso[2]) - 1, Number(iso[3]), Number(iso[4] ?? 0), Number(iso[5] ?? 0)).toISOString();
+  return null;
+}
+
+/** O próprio Portal da Biblioteca responde /biblioteca/500.action ("Requisição Incompleta") para algumas contas/sessões. */
+export function ehRequisicaoIncompleta(pagina, urlFinal = '') {
+  if (/\/biblioteca\/\d{3}\.action/i.test(String(urlFinal ?? ''))) return true;
+  return /Requisi[çc][ãa]o Incompleta/i.test(String(pagina ?? ''));
 }
 
 /**
@@ -54,9 +63,15 @@ export function lerHistoricoBiblioteca(resposta) {
   } catch {
     return null;
   }
-  if (!j || typeof j !== 'object' || !Array.isArray(j.rows)) return null;
+  if (!j || typeof j !== 'object') return null;
+  const linhas = Array.isArray(j.rows)
+    ? j.rows
+    : j.rows == null && ('totalRows' in j || 'totalPages' in j || 'firstResult' in j)
+      ? []
+      : null;
+  if (!linhas) return null;
   const lista = [];
-  for (const r of j.rows) {
+  for (const r of linhas) {
     const nome = limpo(r?.nome);
     const retiradaEm = dataHora(r?.dataRetirada);
     if (!nome || !retiradaEm) continue;

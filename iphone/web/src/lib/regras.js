@@ -15,6 +15,8 @@ export function classificar(sistema, endereco) {
     // Senha vencida ou provisória: o Portal leva toda página para "Alterar Senha" do Portal do Usuário.
     if (caminho.startsWith('/usuario/usuario/')) return 'trocarSenha';
     if (caminho.includes('login') || caminho.includes('logout')) return 'naLogin';
+    if (/^\/biblioteca\/\d{3}\.action$/.test(caminho)) return 'erroBiblioteca';
+    if (caminho.startsWith('/biblioteca/')) return 'logado';
     return caminho.startsWith(raiz) ? 'logado' : 'outra';
   }
   if (uri.hostname !== 'sistemas.ufac.br' || !caminho.startsWith('/eticket')) return 'outra';

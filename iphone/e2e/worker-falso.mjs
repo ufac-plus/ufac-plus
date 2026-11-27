@@ -19,7 +19,7 @@ createServer((req, res) => {
     const cors = {
       'Access-Control-Allow-Origin': req.headers.origin ?? '*',
       'Access-Control-Expose-Headers': 'X-Sessao, X-Url-Final, Content-Disposition',
-      'Access-Control-Allow-Headers': 'Content-Type, X-Sessao, X-Requested-With',
+      'Access-Control-Allow-Headers': 'Content-Type, X-Sessao, X-Requested-With, X-Nova-Biblioteca',
       'Access-Control-Allow-Methods': 'GET, POST',
     };
     const responder = (status, conteudo, final = '', tipo = 'text/html; charset=utf-8') => {
@@ -89,6 +89,8 @@ createServer((req, res) => {
       const final = `https://portal.ufac.br${q}`;
       // Biblioteca com login: a página de entrada e o histórico de empréstimos (JSON).
       if (q.startsWith('/biblioteca/pesquisa/pesquisar.action')) return responder(200, fixture('biblioteca_resultado_vazio.html'), final);
+      if (q.startsWith('/biblioteca/usuario/index.action')) return responder(200, '<html><body>Meu Espaço</body></html>', final);
+      if (q.startsWith('/biblioteca/usuario/emprestimo/historico.action')) return responder(200, '<html><body>Histórico</body></html>', final);
       if (q.startsWith('/biblioteca/usuario/emprestimo/gridhistorico.action')) return responder(200, fixture('biblioteca_historico.html'), final);
       if (q.startsWith('/aluno/index.action')) return responder(200, fixture('portal_inicio.html'), final);
       if (q.includes('relatorio/relatorios.action')) return responder(200, fixture('portal_relatorios.html'), final);

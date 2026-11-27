@@ -47,6 +47,39 @@ describe('repasse', () => {
     expect(proximoSalto(new URL('https://portal.ufac.br/aluno/'), 'http://portal.ufac.br/aluno/index.action').toString()).toBe('https://portal.ufac.br/aluno/index.action');
     expect(proximoSalto(new URL('https://portal.ufac.br/aluno/'), 'https://evil.com/')).toBeNull();
     expect(proximoSalto(new URL('https://sistemas.ufac.br/eticket/'), '/admin/')).toBeNull();
+    // /biblioteca/login.action redireciona para /biblioteca/logout.action: nunca seguir, senão apaga a sessão do Portal.
+    expect(proximoSalto(new URL('https://portal.ufac.br/biblioteca/login.action'), 'http://portal.ufac.br/biblioteca/logout.action')).toBeNull();
+  });
+
+  test('Biblioteca sem sessão para em /biblioteca/login.action sem chamar logout.action nem apagar o Portal', async () => {
+    const vistos = [];
+    const fetcher = vi.fn(async (url) => {
+      vistos.push(url);
+      if (url.includes('gridhistorico.action')) {
+        return new Response('', { status: 302, headers: { Location: 'http://portal.ufac.br/biblioteca/login.action;jsessionid=B1?error=' } });
+      }
+      if (url.includes('/biblioteca/login.action')) {
+        return new Response('', { status: 302, headers: { Location: 'http://portal.ufac.br/biblioteca/logout.action' } });
+      }
+      throw new Error('não deveria seguir para logout.action');
+    });
+    const env = { SESSAO_CHAVE: CHAVE };
+    const sessao = await cifrar([
+      { n: 'JSESSIONID', v: 'ALUNO1', d: 'portal.ufac.br', h: true, p: '/aluno/', e: null },
+      { n: 'JSESSIONID', v: 'BIB_ANON', d: 'portal.ufac.br', h: true, p: '/biblioteca/', e: null },
+    ], CHAVE);
+    const r = await repassar(
+      new Request('https://w.dev/portal/biblioteca/usuario/emprestimo/gridhistorico.action', {
+        headers: { 'X-Sessao': sessao, 'X-Nova-Biblioteca': '1' },
+      }),
+      env,
+      fetcher,
+    );
+    expect(r.status).toBe(200);
+    expect(r.headers.get('X-Url-Final')).toContain('/biblioteca/login.action');
+    expect(vistos).toHaveLength(2);
+    const pote = await decifrar(r.headers.get('X-Sessao'), CHAVE);
+    expect(pote).toEqual([{ n: 'JSESSIONID', v: 'ALUNO1', d: 'portal.ufac.br', h: true, p: '/aluno/', e: null }]);
   });
 
   test('login do portal: segue os saltos por http, guarda cookies e devolve a sessão cifrada', async () => {

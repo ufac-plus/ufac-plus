@@ -30,6 +30,9 @@ export function proximoSalto(atual, location) {
   if (u.protocol === 'http:' && HOSTS_PERMITIDOS.has(u.hostname)) u.protocol = 'https:';
   if (u.protocol !== 'https:' || !HOSTS_PERMITIDOS.has(u.hostname)) return null;
   if (u.hostname === 'sistemas.ufac.br' && !u.pathname.startsWith('/eticket')) return null;
+  // /biblioteca/login.action redireciona para /biblioteca/logout.action, que derruba todos os cookies do Portal
+  // e acaba em /biblioteca/pesquisa/pesquisar.action (200), escondendo que a sessão tinha caído.
+  if (u.pathname.toLowerCase().includes('logout')) return null;
   return u;
 }
 
@@ -79,6 +82,20 @@ async function buscarComRepeticao(fetcher, url, init, plano, prazoFinal, contado
   throw new Esgotado();
 }
 
+function refererBiblioteca(alvo) {
+  if (alvo.hostname !== 'portal.ufac.br' || !alvo.pathname.startsWith('/biblioteca/')) return null;
+  if (alvo.pathname === '/biblioteca/pesquisa/pesquisar.action' && alvo.searchParams.has('matricula')) {
+    return 'https://portal.ufac.br/aluno/index.action';
+  }
+  if (alvo.pathname.startsWith('/biblioteca/usuario/emprestimo/grid')) {
+    return 'https://portal.ufac.br/biblioteca/usuario/emprestimo/historico.action';
+  }
+  if (alvo.pathname.startsWith('/biblioteca/usuario/')) {
+    return 'https://portal.ufac.br/biblioteca/usuario/index.action';
+  }
+  return null;
+}
+
 export async function repassar(pedido, env, fetcher = fetch) {
   const urlPedido = new URL(pedido.url);
   let alvo = destinoDe(urlPedido);
@@ -92,6 +109,13 @@ export async function repassar(pedido, env, fetcher = fetch) {
   }
 
   let pote = (await decifrar(pedido.headers.get('X-Sessao'), env.SESSAO_CHAVE)) ?? [];
+  // Novo login no Portal: descarta JSESSIONID antigo de outros módulos (/biblioteca/, /relatorios/) para não manter sessão anônima.
+  if (alvo.hostname === 'portal.ufac.br' && alvo.pathname.endsWith('/j_security_check')) {
+    pote = pote.filter((c) => c.d !== 'portal.ufac.br' || c.p.startsWith('/aluno') || c.p.startsWith('/professor'));
+  }
+  if (pedido.headers.get('X-Nova-Biblioteca') === '1') {
+    pote = pote.filter((c) => !(c.d === 'portal.ufac.br' && c.p.startsWith('/biblioteca')));
+  }
   let metodo = pedido.method;
   let resposta;
   const prazoFinal = Date.now() + PRAZO_MS;
@@ -109,6 +133,9 @@ export async function repassar(pedido, env, fetcher = fetch) {
       // O Django do eTICKET confere a origem do formulário (CSRF).
       cabecalhos.set('Origin', alvo.origin);
       cabecalhos.set('Referer', alvo.toString());
+    } else {
+      const ref = refererBiblioteca(alvo);
+      if (ref) cabecalhos.set('Referer', ref);
     }
     if (pedido.headers.get('X-Requested-With')) cabecalhos.set('X-Requested-With', 'XMLHttpRequest');
 
@@ -144,5 +171,6 @@ export async function repassar(pedido, env, fetcher = fetch) {
   });
   const disposicao = resposta.headers.get('Content-Disposition');
   if (disposicao) saida.set('Content-Disposition', disposicao);
-  return new Response(resposta.body, { status: resposta.status, headers: saida });
+  const statusSaida = resposta.status >= 300 && resposta.status < 400 ? 200 : resposta.status;
+  return new Response(resposta.body, { status: statusSaida, headers: saida });
 }

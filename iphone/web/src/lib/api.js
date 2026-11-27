@@ -22,12 +22,13 @@ export const LIMITE_PADRAO = 25000;
  * Pede uma página da Ufac. sistema: 'portal' | 'professor' | 'eticket'.
  * Devolve { status, estado: 'logado'|'naLogin'|'outra', urlFinal, resposta }.
  */
-export async function pedir(sistema, caminho, { metodo = 'GET', formulario, xhr = false, accept, limite = LIMITE_PADRAO } = {}) {
+export async function pedir(sistema, caminho, { metodo = 'GET', formulario, xhr = false, accept, semSessao = false, novaBiblioteca = false, limite = LIMITE_PADRAO } = {}) {
   const raiz = sistema === 'eticket' ? 'eticket' : 'portal';
   const cabecalhos = {};
-  const sessao = await ler('sessao');
+  const sessao = semSessao ? null : await ler('sessao');
   if (sessao) cabecalhos['X-Sessao'] = sessao;
   if (xhr) cabecalhos['X-Requested-With'] = 'XMLHttpRequest';
+  if (novaBiblioteca) cabecalhos['X-Nova-Biblioteca'] = '1';
   if (accept) cabecalhos.Accept = accept;
   let corpo;
   if (formulario) {
@@ -47,7 +48,7 @@ export async function pedir(sistema, caminho, { metodo = 'GET', formulario, xhr 
     registrar('rede', { sistema, metodo, caminho: semParametros(caminho), status: resposta.status, tentativas: resposta.headers.get('X-Tentativas') ?? '', ms: Date.now() - t0 });
     throw new SemConexao(`A Ufac não respondeu (${resposta.status})`);
   }
-  const nova = resposta.headers.get('X-Sessao');
+  const nova = semSessao ? null : resposta.headers.get('X-Sessao');
   if (nova) await gravar('sessao', nova);
   const urlFinal = resposta.headers.get('X-Url-Final') ?? '';
   return { status: resposta.status, estado: classificar(sistema, urlFinal), urlFinal, resposta };

@@ -1,9 +1,19 @@
 // Mesmos casos do Android (test/biblioteca_test.dart), contra as mesmas fixtures.
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { describe, expect, test } from 'vitest';
-import { caminhoBusca, caminhoExemplares, doCache, guardarNoCache, normalizarTermo } from '../src/lib/biblioteca.js';
-import { lerExemplares, lerHistoricoBiblioteca, lerResultadoAcervo, tituloCompleto } from '../src/lib/extratores/biblioteca.js';
+import { beforeEach, describe, expect, test, vi } from 'vitest';
+
+const banco = new Map();
+vi.mock('../src/lib/armazenamento.js', () => ({
+  ler: async (k) => banco.get(k),
+  gravar: async (k, v) => void banco.set(k, v),
+  apagar: async (k) => void banco.delete(k),
+  apagarTudo: async () => banco.clear(),
+}));
+
+const { caminhoBusca, caminhoExemplares, doCache, ErroBibliotecaNoSite, guardarNoCache, lerHistoricoEmprestimos, normalizarTermo } = await import('../src/lib/biblioteca.js');
+import { ehRequisicaoIncompleta, lerExemplares, lerHistoricoBiblioteca, lerResultadoAcervo, tituloCompleto } from '../src/lib/extratores/biblioteca.js';
+import { classificar } from '../src/lib/regras.js';
 
 const fixture = (nome) => readFileSync(resolve(__dirname, '../../fixtures', nome), 'utf8');
 
@@ -79,10 +89,58 @@ describe('Biblioteca: histórico de empréstimos', () => {
     // "Título /" fica sem a barra solta do fim; sem data de entrega, ainda está emprestado.
     expect(lista[1]).toMatchObject({ titulo: 'Manual fictício de contratos', devolucaoEm: null });
   });
-  test('JSON puro funciona e o que não for a lista vira null', () => {
+  test('JSON puro funciona, rows nulo vira lista vazia e o que não for a lista vira null', () => {
     expect(lerHistoricoBiblioteca('{"rows":[{"nome":"Livro /","dataRetirada":"01/10/2026 10:00:00","dataEntrega":""}]}')).toHaveLength(1);
     expect(lerHistoricoBiblioteca('{"rows":[]}')).toEqual([]);
+    expect(lerHistoricoBiblioteca('{"firstResult":0,"rows":null,"totalPages":0,"totalRows":"0","page":1}')).toEqual([]);
     expect(lerHistoricoBiblioteca('{"rows":[{"nome":"","dataRetirada":"x"}]}')).toEqual([]);
     for (const ruim of [null, '', 'não é json', '<html></html>', '{"a":1}']) expect(lerHistoricoBiblioteca(ruim)).toBeNull();
+  });
+  test('reconhece 500.action ("Requisição Incompleta") e login da Biblioteca', () => {
+    expect(ehRequisicaoIncompleta('<html><title>Requisição Incompleta</title></html>', '')).toBe(true);
+    expect(ehRequisicaoIncompleta('', 'https://portal.ufac.br/biblioteca/500.action')).toBe(true);
+    expect(ehRequisicaoIncompleta('{"rows":[]}', 'https://portal.ufac.br/biblioteca/usuario/emprestimo/gridhistorico.action')).toBe(false);
+    expect(classificar('portal', 'https://portal.ufac.br/biblioteca/login.action;jsessionid=1?error=')).toBe('naLogin');
+    expect(classificar('portal', 'https://portal.ufac.br/biblioteca/500.action')).toBe('erroBiblioteca');
+    expect(classificar('portal', 'https://portal.ufac.br/biblioteca/usuario/emprestimo/gridhistorico.action')).toBe('logado');
+  });
+
+  beforeEach(() => banco.clear());
+
+  test('se o primeiro gridhistorico falhar, passa por Meu Espaço › Histórico com X-Nova-Biblioteca e lê o JSON', async () => {
+    banco.set('idInterno', '11111');
+    banco.set('sessao', 'S1');
+    const vistos = [];
+    let abriuMoldura = false;
+    vi.stubGlobal('fetch', async (url, init) => {
+      const u = new URL(url);
+      vistos.push({ caminho: u.pathname, nova: init.headers['X-Nova-Biblioteca'] ?? '', xhr: init.headers['X-Requested-With'] ?? '' });
+      if (u.pathname.endsWith('/historico.action')) abriuMoldura = true;
+      if (u.pathname.endsWith('/gridhistorico.action')) {
+        return abriuMoldura
+          ? new Response(fixture('biblioteca_historico.html'), { headers: { 'X-Url-Final': `https://portal.ufac.br${u.pathname.slice(7)}` } })
+          : new Response('<html><body>vazio</body></html>', { headers: { 'X-Url-Final': 'https://portal.ufac.br/biblioteca/usuario/index.action' } });
+      }
+      return new Response('<html></html>', { headers: { 'X-Url-Final': `https://portal.ufac.br${u.pathname.slice(7)}` } });
+    });
+    const r = await lerHistoricoEmprestimos({ forcar: true });
+    expect(r.lista).toHaveLength(2);
+    expect(vistos[0]).toMatchObject({ caminho: '/portal/biblioteca/pesquisa/pesquisar.action', nova: '1' });
+    expect(vistos[1]).toMatchObject({ caminho: '/portal/biblioteca/usuario/emprestimo/gridhistorico.action', xhr: 'XMLHttpRequest' });
+  });
+
+  test('quando a Biblioteca da Ufac responde 500.action ("Requisição Incompleta"), lança ErroBibliotecaNoSite', async () => {
+    banco.set('idInterno', '11111');
+    banco.set('sessao', 'S1');
+    vi.stubGlobal('fetch', async (url) => {
+      const u = new URL(url);
+      if (u.pathname.endsWith('/pesquisar.action')) {
+        return new Response('<html></html>', { headers: { 'X-Url-Final': 'https://portal.ufac.br/biblioteca/pesquisa/pesquisar.action' } });
+      }
+      return new Response('<html><head><title>Portal da Biblioteca - UFAC - Requisição Incompleta</title></head><body>Requisição Incompleta</body></html>', {
+        headers: { 'X-Url-Final': 'https://portal.ufac.br/biblioteca/500.action' },
+      });
+    });
+    await expect(lerHistoricoEmprestimos({ forcar: true })).rejects.toBeInstanceOf(ErroBibliotecaNoSite);
   });
 });

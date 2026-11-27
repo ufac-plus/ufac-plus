@@ -1,9 +1,10 @@
 // Pesquisa no acervo da Biblioteca (pública: não precisa do login do Portal). Vai pelo Worker, como o resto.
 // Respeito à Ufac: só busca quando a pessoa toca em Buscar, e guarda as últimas buscas por algumas horas.
-import { lerPagina, pedir, SemConexao } from './api.js';
+import { enderecoDaUltimaPagina, lerPagina, pedir, SemConexao } from './api.js';
 import { gravar, ler } from './armazenamento.js';
 import { ErroLeitura } from './dados.js';
-import { lerExemplares, lerHistoricoBiblioteca, lerResultadoAcervo } from './extratores/biblioteca.js';
+import { ehRequisicaoIncompleta, lerExemplares, lerHistoricoBiblioteca, lerResultadoAcervo } from './extratores/biblioteca.js';
+import { diagnosticoPagina } from './extratores/portal.js';
 import { registrar, semParametros } from './registro.js';
 
 export const VALIDADE_BUSCA_MS = 6 * 60 * 60 * 1000;
@@ -15,7 +16,12 @@ const MAX_EXEMPLARES = 20;
 export const caminhoBusca = (termo) => `/biblioteca/pesquisa/resultado.action?keyword=${encodeURIComponent(termo)}`;
 // A Biblioteca só reconhece a pessoa depois de entrar pelo link com o número interno (como no Android).
 export const caminhoEntradaBiblioteca = (id) => `/biblioteca/pesquisa/pesquisar.action?matricula=${id}`;
+export const caminhoMeuEspacoBiblioteca = '/biblioteca/usuario/index.action';
+export const caminhoMolduraHistorico = '/biblioteca/usuario/emprestimo/historico.action';
 export const caminhoHistorico = '/biblioteca/usuario/emprestimo/gridhistorico.action?_search=false&rows=100&page=1&sidx=dataRetirada&sord=desc';
+const OPCOES_GRID = { xhr: true, accept: 'application/json, text/javascript, */*; q=0.01' };
+
+export class ErroBibliotecaNoSite extends Error {}
 export const caminhoExemplares = (t) =>
   `/biblioteca/ajax/exemplar/itens.action?${new URLSearchParams({ idRegistro: t.idRegistro, titulo: t.titulo, subtitulo: '', autor: t.autor ?? '' })}`;
 
@@ -34,7 +40,8 @@ export function guardarNoCache(entradas, entrada, validadeMs, max, agora = Date.
 }
 
 async function lerPublica(caminho) {
-  const r = await pedir('portal', caminho);
+  // semSessao: a pesquisa pública não precisa nem grava cookies, então nunca cria sessão anônima em /biblioteca/.
+  const r = await pedir('portal', caminho, { semSessao: true });
   if (r.status >= 400) {
     registrar('rede', { sistema: 'biblioteca', caminho: semParametros(caminho), status: r.status });
     throw new SemConexao(`A Biblioteca respondeu ${r.status}`);
@@ -95,12 +102,39 @@ export async function lerHistoricoEmprestimos({ forcar = false, agora = Date.now
   if (!forcar && guardado && agora - new Date(guardado.lidoEm).getTime() < VALIDADE_HISTORICO_MS) return guardado;
   const id = await ler('idInterno');
   if (!id) return null;
-  if ((await lerPagina('portal', caminhoEntradaBiblioteca(id))) === null) return null;
-  const texto = await lerPagina('portal', caminhoHistorico);
+  // novaBiblioteca descarta qualquer JSESSIONID anônimo/antigo de /biblioteca/ antes de entrar com o número interno.
+  if ((await lerPagina('portal', caminhoEntradaBiblioteca(id), { novaBiblioteca: true })) === null) return null;
+  let texto = await lerPagina('portal', caminhoHistorico, OPCOES_GRID);
   if (texto === null) return null;
-  const lista = lerHistoricoBiblioteca(texto);
+  let lista = lerHistoricoBiblioteca(texto);
   if (!lista) {
-    registrar('leitura', { o: 'histórico da Biblioteca' });
+    // Se houve reentrada automática no Portal ou o ASTEN exige passar por Meu Espaço › Histórico antes do jqGrid,
+    // refaz o caminho completo da própria página oficial uma vez.
+    if ((await lerPagina('portal', caminhoEntradaBiblioteca(id), { novaBiblioteca: true })) === null) return null;
+    const espaco = await lerPagina('portal', caminhoMeuEspacoBiblioteca);
+    if (espaco === null) return null;
+    if (!ehRequisicaoIncompleta(espaco, enderecoDaUltimaPagina())) {
+      const moldura = await lerPagina('portal', caminhoMolduraHistorico);
+      if (moldura === null) return null;
+      if (!ehRequisicaoIncompleta(moldura, enderecoDaUltimaPagina())) {
+        texto = await lerPagina('portal', caminhoHistorico, OPCOES_GRID);
+        if (texto === null) return null;
+        lista = lerHistoricoBiblioteca(texto);
+      } else {
+        texto = moldura;
+      }
+    } else {
+      texto = espaco;
+    }
+  }
+  if (!lista) {
+    const urlFinal = enderecoDaUltimaPagina();
+    registrar('leitura', { o: 'histórico da Biblioteca', ...diagnosticoPagina(texto, urlFinal) });
+    if (ehRequisicaoIncompleta(texto, urlFinal)) {
+      throw new ErroBibliotecaNoSite(
+        'O site da Biblioteca respondeu "Requisição Incompleta" para sua conta. Isso costuma acontecer quando o cadastro na Biblioteca ainda não foi ativado no balcão ou quando o módulo da Biblioteca está instável.',
+      );
+    }
     throw new ErroLeitura('Não consegui ler seus empréstimos agora.');
   }
   const entrada = { lidoEm: new Date(agora).toISOString(), lista };
