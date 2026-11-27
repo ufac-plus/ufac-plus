@@ -152,25 +152,25 @@ void _portal() {
   group('proximaAula', () {
     final seg = Aula(disciplina: 'Seg', diaSemana: DateTime.monday, inicioMin: 19 * 60, fimMin: 22 * 60 + 40);
     final sab = Aula(disciplina: 'Sab', diaSemana: DateTime.saturday, inicioMin: 8 * 60, fimMin: 12 * 60);
-    // 2026-11-02 é segunda.
+    // 2026-11-09 é segunda (a 02/11 é Finados: sem aula).
     test('hoje, perto', () {
-      final p = proximaAula([seg, sab], DateTime(2026, 11, 2, 18, 40))!;
+      final p = proximaAula([seg, sab], DateTime(2026, 11, 9, 18, 40))!;
       expect(p.aula.disciplina, 'Seg');
       expect(p.rotulo, 'começa em 20 min');
     });
     test('hoje, longe', () {
-      expect(proximaAula([seg], DateTime(2026, 11, 2, 10))!.rotulo, 'hoje às 19h');
+      expect(proximaAula([seg], DateTime(2026, 11, 9, 10))!.rotulo, 'hoje às 19h');
     });
     test('em andamento', () {
-      expect(proximaAula([seg], DateTime(2026, 11, 2, 20))!.rotulo, 'em andamento');
+      expect(proximaAula([seg], DateTime(2026, 11, 9, 20))!.rotulo, 'em andamento');
     });
     test('depois da aula passa para a seguinte', () {
-      final p = proximaAula([seg, sab], DateTime(2026, 11, 2, 23))!;
+      final p = proximaAula([seg, sab], DateTime(2026, 11, 9, 23))!;
       expect(p.aula.disciplina, 'Sab');
       expect(p.rotulo, 'sábado às 8h');
     });
     test('amanha', () {
-      expect(proximaAula([sab], DateTime(2026, 11, 6, 12))!.rotulo, 'amanhã às 8h');
+      expect(proximaAula([sab], DateTime(2026, 11, 13, 12))!.rotulo, 'amanhã às 8h');
     });
     test('fora do periodo da turma nao conta', () {
       final vencida = Aula(
@@ -180,10 +180,10 @@ void _portal() {
         fimMin: 20 * 60,
         valeAte: DateTime(2026, 10, 1),
       );
-      expect(proximaAula([vencida], DateTime(2026, 11, 2, 10)), isNull);
+      expect(proximaAula([vencida], DateTime(2026, 11, 9, 10)), isNull);
     });
     test('sem aulas', () {
-      expect(proximaAula([], DateTime(2026, 11, 2)), isNull);
+      expect(proximaAula([], DateTime(2026, 11, 9)), isNull);
     });
   });
 }

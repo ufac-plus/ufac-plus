@@ -8,8 +8,8 @@
 # - TESTE: sem a chave. Gera "UFAC+ Teste", com outro identificador, que fica AO LADO
 #   do app oficial. O Classroom não funciona nela (o Google só aceita o app oficial).
 #
-# O APK fica na página da execução ("Artifacts"). Só no modo OFICIAL, num push ao main ou ao
-# android-paridade-iphone, o job "Publicar" cria a Release vX.Y.Z como Latest (nunca Pre-release),
+# O APK fica na página da execução ("Artifacts"). Só no modo OFICIAL, num push ao main,
+# o job "Publicar" cria a Release vX.Y.Z como Latest (nunca Pre-release),
 # com as notas de docs/notas-android/vX.Y.Z.md. Se a Release já existe, não faz nada.
 # Publicar foi autorizado por Arthur em 24/11/2026 ("pode publicar" quando a chave estiver no GitHub).
 
@@ -199,7 +199,7 @@ jobs:
     needs: apk
     if: >-
       github.event_name == 'push' && needs.apk.outputs.modo == 'oficial' &&
-      (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/android-paridade-iphone')
+      github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     permissions:
       contents: write

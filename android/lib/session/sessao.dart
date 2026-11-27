@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
+import '../data/registro.dart';
 import 'credenciais.dart';
 import 'regras_sessao.dart';
 
@@ -11,15 +12,27 @@ enum ResultadoVerificacao { ativa, expirada, semResposta }
 
 /// Página aberta em segundo plano. O HTML só existe com sessão ativa e nunca vai para log.
 class PaginaLida {
-  const PaginaLida(this.resultado, [this.html]) : repetivel = false;
+  const PaginaLida(this.resultado, [this.html]) : repetivel = false, trocarSenha = false;
 
   /// O site não respondeu a tempo ou mostrou o certificado errado, antes de qualquer login enviado:
   /// pode ser repetida com uma conexão nova.
-  const PaginaLida.falhaDeRede() : resultado = ResultadoVerificacao.semResposta, html = null, repetivel = true;
+  const PaginaLida.falhaDeRede()
+    : resultado = ResultadoVerificacao.semResposta,
+      html = null,
+      repetivel = true,
+      trocarSenha = false;
+
+  /// O Portal exige trocar a senha no site antes de abrir qualquer página. Para as telas, é como sessão vencida.
+  const PaginaLida.trocarSenha()
+    : resultado = ResultadoVerificacao.expirada,
+      html = null,
+      repetivel = false,
+      trocarSenha = true;
 
   final ResultadoVerificacao resultado;
   final String? html;
   final bool repetivel;
+  final bool trocarSenha;
 }
 
 // Issue #3: o eTICKET tem dois IPs; um entrega o certificado do portal e, no outro, cerca de metade das
@@ -98,6 +111,10 @@ class Sessao extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// O Portal pediu para trocar a senha (vencida ou provisória). A Início mostra a faixa até uma leitura
+  /// do Portal dar certo de novo. Igual ao iPhone 1.2.
+  bool portalPedeSenha = false;
+
   Future<bool> loginConcluido() async => await _cofre.read(key: _chaveLogin) == 'sim';
 
   Future<void> concluirLogin() async {
@@ -113,6 +130,21 @@ class Sessao extends ChangeNotifier {
       _expirados.add(sistema);
     } else if (pagina.resultado == ResultadoVerificacao.ativa) {
       _expirados.remove(sistema);
+    }
+    if (sistema != Sistema.eticket) {
+      if (pagina.trocarSenha) {
+        portalPedeSenha = true;
+      } else if (pagina.resultado == ResultadoVerificacao.ativa) {
+        portalPedeSenha = false;
+      }
+    }
+    // Para o "Relatar um problema": só o que deu errado, sem parâmetros do endereço (lá vai o id interno).
+    if (pagina.resultado != ResultadoVerificacao.ativa) {
+      Registro.instancia.registrar('leitura', {
+        'sistema': sistema.name,
+        'resultado': pagina.trocarSenha ? 'trocarSenha' : pagina.resultado.name,
+        'pagina': semParametros(url ?? sistema.entrada),
+      });
     }
     notifyListeners();
     return pagina;
@@ -130,6 +162,7 @@ class Sessao extends ChangeNotifier {
     Credenciais.instancia.limparMemoria();
     _expirados.clear();
     _pulados.clear();
+    portalPedeSenha = false;
     notifyListeners();
   }
 }
@@ -197,8 +230,14 @@ Future<PaginaLida> _umaLeitura(Sistema sistema, String endereco, (String, String
             return;
           }
           // Já tentou e voltou para o login: senha recusada (ou mudou). Para de tentar.
-          if (tentouLogin) Credenciais.instancia.falhou = true;
+          if (tentouLogin) {
+            Credenciais.instancia.falhou = true;
+            Registro.instancia.registrar('login', {'sistema': sistema.name, 'resultado': 'automático recusado'});
+          }
           concluir(const PaginaLida(ResultadoVerificacao.expirada));
+        case EstadoPagina.trocarSenha:
+          // A senha foi aceita, mas o Portal exige trocar no site: tentar de novo não adianta.
+          concluir(const PaginaLida.trocarSenha());
         case EstadoPagina.outra:
           concluir(const PaginaLida(ResultadoVerificacao.semResposta));
       }

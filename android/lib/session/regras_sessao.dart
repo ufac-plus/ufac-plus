@@ -13,7 +13,12 @@ enum Sistema {
   final String entrada;
 }
 
-enum EstadoPagina { logado, naLogin, outra }
+/// [trocarSenha]: o Portal aceitou a senha, mas prende a sessão em "Alterar Senha" (senha vencida ou
+/// provisória) até a pessoa trocar no site. Mandar a senha de novo não adianta.
+enum EstadoPagina { logado, naLogin, trocarSenha, outra }
+
+/// Senha vencida ou provisória: o Portal leva toda página para o "Alterar Senha" do Portal do Usuário.
+bool ehTrocaDeSenha(Uri uri) => uri.host == 'portal.ufac.br' && uri.path.toLowerCase().startsWith('/usuario/usuario/');
 
 /// A WebView só navega dentro dos sites da Ufac.
 bool ehSiteDaUfac(Uri uri) => uri.host == 'ufac.br' || uri.host.endsWith('.ufac.br');
@@ -24,6 +29,7 @@ Uri? versaoHttps(Uri uri) => uri.scheme == 'http' && ehSiteDaUfac(uri) ? uri.rep
 
 EstadoPagina classificar(Sistema sistema, Uri uri) {
   final caminho = uri.path.toLowerCase();
+  if (sistema != Sistema.eticket && ehTrocaDeSenha(uri)) return EstadoPagina.trocarSenha;
   switch (sistema) {
     case Sistema.portal:
       if (uri.host != 'portal.ufac.br' || !caminho.startsWith('/aluno')) return EstadoPagina.outra;

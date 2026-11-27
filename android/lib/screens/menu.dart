@@ -6,6 +6,7 @@ import '../data/editais.dart';
 import '../data/foto_perfil.dart';
 import '../data/perfil.dart';
 import '../data/preferencias.dart';
+import '../data/registro.dart';
 import '../data/repositorio_biblioteca.dart';
 import '../data/repositorio_professor.dart';
 import '../data/repositorio_portal.dart';
@@ -50,6 +51,7 @@ Future<void> confirmarSaida(BuildContext context) async {
   await RepositorioRu.instancia.limpar();
   RepositorioPortal.instancia.limpar();
   RepositorioProfessor.instancia.limpar();
+  await Registro.instancia.limpar();
   RepositorioBiblioteca.instancia.limparCache();
   await RepositorioEditais.instancia.limparCache();
   await FotoPerfil.instancia.remover();

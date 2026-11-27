@@ -258,3 +258,18 @@ Prints dos temas: `flutter test test/visual_test.dart --update-goldens --tags vi
 - **Issue #4:** se o Chaves do iCloud preenche o item de outro sistema ("· eTICKET" na etapa do Portal, ou o contrário), a senha é esvaziada e o app avisa, para nunca enviar a senha ao sistema errado.
 - **Issue #8:** Biblioteca mostra "Meus empréstimos" (histórico lido do JSON do site, cache de 6 h) e links para Meu Espaço, Renovação e Reservas no site oficial. Na 1.8.2: o Worker para antes de seguir `/biblioteca/login.action → /biblioteca/logout.action` (que apagava a sessão do Portal e caía em `pesquisar.action` com 200, escondendo a queda de sessão), descarta `JSESSIONID` anônimo/antigo de `/biblioteca/` ao entrar (`X-Nova-Biblioteca` e no login do Portal), a pesquisa pública não mexe em `X-Sessao`, o extrator aceita `rows: null` quando não há empréstimos e, se o site oficial responder `/biblioteca/500.action` ("Requisição Incompleta") mesmo após abrir Meu Espaço › Histórico, a tela explica o motivo sem exibir falha genérica.
 - **Issue #14:** o cartão do RU avisa "Saldo baixo" com R$ 2,00 ou menos (chave nas Configurações, ligada por padrão).
+
+## 2026-11-24: faltas no Direito, explicado por Arthur
+- A regra é 75% de frequência, e o limite de **16 faltas** vale para as disciplinas de Direito (72 h). No Direito há, em tese, duas aulas por noite (de 1h40; Arthur vai conferir se não são 1h30), e cada aula conta como uma falta na chamada. Por isso o Android usa 72 h → 16 (`cargaReferenciaFaltas`), e o iPhone também, desde a 1.8 (issue #22).
+
+## 2026-11-24: organização do repositório
+- As branches `android-paridade-iphone`, `android/issues-nov` e `claude/blissful-lovelace-…` foram apagadas no GitHub (já estavam no `main`). Só existe o `main`.
+- O robô publica a Release só a partir do `main` (tirada a menção à branch apagada).
+
+## 2026-11-24: Android 0.1.15 — o que faltava do iPhone
+- **Feriado:** `proximaAula` pula o dia de feriado (não o ponto facultativo), como o iPhone: a faixa diz "Sem aulas" e o cartão não pode dizer "hoje às 19h".
+- **Número interno do Portal:** além do `input#matricula`, aceita uma lista de seleção (opção escolhida) e, sem o campo, o número dos links `?matricula=` quando todos apontam para o mesmo.
+- **Senha vencida:** página `portal.ufac.br/usuario/usuario/…` vira `EstadoPagina.trocarSenha`; a leitura conta como sessão vencida, não tenta o login automático de novo, e a Início mostra "O Portal está pedindo para você trocar a senha" com o botão para a página oficial. Some quando uma leitura do Portal dá certo.
+- **Registro de eventos** (`lib/data/registro.dart`): só leituras que falham e o login automático recusado, até 60, anonimizados (sem números longos, CPF, e-mail nem parâmetros de endereço). Vai no "Relatar um problema" junto com o estado do app; "Sair" apaga.
+- **Créditos** em Configurações, com o mesmo texto do iPhone e do site.
+- A revisão de visual do iPhone 1.4 (vidro, tipografia do iOS) não foi copiada: o Android segue o Material 3 e os tokens da seção 6 do `CLAUDE.md`.

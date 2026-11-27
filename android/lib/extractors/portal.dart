@@ -10,9 +10,21 @@ class DadosIdentificacao {
 }
 
 /// O número interno que o portal usa nos endereços (não é a matrícula de 11 dígitos).
+/// Igual ao iPhone: normalmente vem num `<input type="hidden" id="matricula">`; se vier numa lista de
+/// seleção, vale a opção escolhida; sem o campo, aceita o número dos links (?matricula=) só se todos
+/// apontarem para o mesmo (mais de um é ambíguo).
 String? lerIdInterno(String pagina) {
-  final valor = html.parse(pagina).querySelector('input#matricula')?.attributes['value']?.trim();
-  return valor != null && RegExp(r'^\d+$').hasMatch(valor) ? valor : null;
+  final campo = html.parse(pagina).querySelector('#matricula');
+  final String? valor;
+  if (campo?.localName == 'select') {
+    final opcao = campo!.querySelector('option[selected]') ?? campo.querySelector('option');
+    valor = opcao?.attributes['value']?.trim();
+  } else {
+    valor = campo?.attributes['value']?.trim();
+  }
+  if (valor != null && RegExp(r'^\d+$').hasMatch(valor)) return valor;
+  final ids = {for (final m in RegExp(r'[?&](?:amp;)?matricula=(\d+)').allMatches(pagina)) m[1]!};
+  return ids.length == 1 ? ids.first : null;
 }
 
 /// O link "Mais Relatórios" da página de Relatórios, como endereço completo.

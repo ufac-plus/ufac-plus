@@ -421,6 +421,21 @@ Widget cabecalhoComFaixas(BuildContext context, DateTime agora, Widget cabecalho
                   }
                 },
         ),
+      if (Sessao.instancia.portalPedeSenha)
+        FaixaAviso(
+          icone: Icons.lock_reset_rounded,
+          texto: 'O Portal está pedindo para você trocar a senha.',
+          acao: 'Trocar no site',
+          aoTocar: () => Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) => const TelaSiteOficial(
+                titulo: 'Trocar a senha',
+                endereco: urlPortal,
+                dica: 'Troque a senha nesta página oficial da Ufac. Depois, entre de novo no app com a senha nova.',
+              ),
+            ),
+          ),
+        ),
       if (feriado != null) FaixaAviso(icone: Icons.event_rounded, texto: '${feriado.titulo}\n${feriado.texto}'),
     ];
     return Column(

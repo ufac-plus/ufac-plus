@@ -22,6 +22,7 @@ import '../session/sessao.dart';
 import '../ui/componentes.dart';
 import 'acoes_portal.dart';
 import 'acoes_professor.dart';
+import 'creditos.dart';
 import 'menu.dart';
 import 'relatar.dart';
 import 'ru.dart' show conectarEticket;
@@ -296,6 +297,14 @@ class TelaConfiguracoes extends StatelessWidget {
                 fundoIcone: c.navAtivoFundo,
                 titulo: 'Sobre o UFAC+',
                 aoTocar: () => _sobre(context),
+              ),
+              ItemLista(
+                icone: Icons.groups_rounded,
+                corIcone: c.navAtivo,
+                fundoIcone: c.navAtivoFundo,
+                titulo: 'Créditos',
+                subtitulo: 'Quem faz o UFAC+',
+                aoTocar: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const TelaCreditos())),
               ),
               BotaoContorno(
                 texto: 'Sair da conta',

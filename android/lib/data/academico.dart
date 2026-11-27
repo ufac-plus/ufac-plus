@@ -1,6 +1,7 @@
 import 'dart:math';
 
 import '../config.dart';
+import 'feriados.dart';
 
 /// Dados do Portal. A matrícula não entra aqui: ela é igual ao número do QR e fica no cofre.
 class Identificacao {
@@ -164,10 +165,13 @@ String _hora(int minutos) {
 }
 
 /// A aula em andamento ou a próxima nos próximos 7 dias. Null se não houver nenhuma.
+/// Dia de feriado (não ponto facultativo) é pulado, como no iPhone: a faixa da Início diz "Sem aulas",
+/// então o cartão não pode dizer "em andamento".
 ProximaAula? proximaAula(List<Aula> aulas, DateTime agora) {
   final minutos = agora.hour * 60 + agora.minute;
   for (var d = 0; d < 7; d++) {
     final dia = agora.add(Duration(days: d));
+    if (semAulaPorFeriado(dia)) continue;
     final doDia = aulas.where((a) => a.diaSemana == dia.weekday && a.valeNoDia(dia)).toList()
       ..sort((a, b) => a.inicioMin.compareTo(b.inicioMin));
     for (final a in doDia) {
