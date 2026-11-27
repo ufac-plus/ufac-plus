@@ -36,8 +36,8 @@ Versão do UFAC+ para iPhone, como app da web instalável (PWA). Fica na pasta `
 | Cartões de vidro | Cartões sólidos; vidro só nos controles que flutuam (abas, botões do topo, folhas, avisos) | O HIG do Liquid Glass pede vidro só na camada de controles; no conteúdo ele custa desempenho e atrapalha a leitura. |
 | Tamanhos fixos | Texto em `rem` sobre `-apple-system-body`: acompanha Ajustes › Tamanho do Texto, com teto nos tamanhos extremos | Dynamic Type do iPhone. |
 
-## Novidades da 1.8 (26/11/2026)
-Barra de abas ancorada na borda de baixo (sem `black-translucent`, que no iOS 26 encolhe a área do app); Editais com Proex, filtro de horas complementares e aviso de bolsa de monitoria (Worker: `worker/src/monitoria.js`); faltas 72 h → 16 (#22); proteção do Chaves do iCloud (#4); Meus empréstimos na Biblioteca (#8); aviso de saldo baixo (#14). Detalhes em `docs/decisoes.md`.
+## Novidades da 1.8.1 (26/11/2026)
+Barra de abas em cápsula arredondada Liquid Glass descida até perto da borda inferior (sem `black-translucent`, que no iOS 26 encolhe a área do app); Editais com Proex, filtro de horas complementares e aviso de bolsa de monitoria (Worker: `worker/src/monitoria.js`); faltas 72 h → 16 (#22); proteção do Chaves do iCloud (#4); Meus empréstimos na Biblioteca (#8); aviso de saldo baixo (#14). Detalhes em `docs/decisoes.md`.
 
 ## Rodar no Mac
 

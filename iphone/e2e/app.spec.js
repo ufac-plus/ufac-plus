@@ -116,10 +116,14 @@ test('login em 2 etapas e telas do aluno', async ({ page }) => {
   await expect(page.getByText('12345678901')).toBeVisible();
   await expect(page.getByText('Curso Exemplo · Ufac')).toBeVisible();
   await expect(page.getByText(/^Jantar · 18h$/)).toBeVisible();
-  // Barra de abas ancorada na borda de baixo da tela (e não flutuando acima dela), com a lente de 52 px.
-  const alturaTela = page.viewportSize().height;
+  // Cápsula arredondada em Liquid Glass rente à base da tela (4 px sem safe-area; 14 px de margem lateral), com lente de 52 px.
+  const { width: larguraTela, height: alturaTela } = page.viewportSize();
   const abas = await page.locator('.abas').boundingBox();
-  expect(Math.round(abas.y + abas.height)).toBe(alturaTela);
+  expect(Math.round(abas.x)).toBe(14);
+  expect(Math.round(abas.width)).toBe(larguraTela - 28);
+  expect(Math.round(abas.height)).toBe(64);
+  expect(Math.round(abas.y + abas.height)).toBe(alturaTela - 4);
+  await expect(page.locator('.abas')).toHaveCSS('border-radius', '999px');
   expect(Math.round((await page.locator('.abas .lente').boundingBox()).height)).toBe(52);
   await expect(page.getByText('Saldo baixo')).toHaveCount(0); // R$ 12,50: sem aviso
   await print(page, '02-inicio-claro', { fullPage: true });
